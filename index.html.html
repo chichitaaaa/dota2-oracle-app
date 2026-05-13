@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dota 2 Last Pick Oracle</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #c8102e;
+    --accent-bright: #ff2d4e;
+    --accent-dim: #8b0c20;
+    --silver: #c8d0d8;
+    --silver-bright: #eef1f4;
+    --green: #27ae60;
+    --dark: #080808;
+    --panel: #0e0e0e;
+    --panel2: #141414;
+    --panel3: #1a1a1a;
+    --border: #2a2020;
+    --border2: #3a1520;
+    --text: #b0b8c0;
+    --muted: #505860;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--dark);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 70% 50% at 50% -10%, rgba(200,16,46,0.12) 0%, transparent 65%),
+      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(200,16,46,0.06) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(200,16,46,0.018) 80px, rgba(200,16,46,0.018) 81px),
+      repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,16,46,0.018) 80px, rgba(200,16,46,0.018) 81px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; position: relative; z-index: 1; }
+
+  header { text-align: center; padding: 32px 0 24px; }
+
+  .logo-line { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; }
+  .logo-ornament { width: 60px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent)); }
+  .logo-ornament.right { background: linear-gradient(90deg, var(--accent), transparent); }
+
+  h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: clamp(16px, 3.5vw, 26px);
+    font-weight: 900;
+    letter-spacing: 3px;
+    background: linear-gradient(135deg, #c8102e 0%, #ff2d4e 40%, #ff6b7a 60%, #ff2d4e 80%, #c8102e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle { font-size: 11px; letter-spacing: 4px; color: var(--muted); text-transform: uppercase; margin-top: 5px; font-family: 'Share Tech Mono', monospace; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 18px; margin-bottom: 14px; position: relative; }
+  .panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 4px 4px 0 0; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.5; }
+  .panel.allies::before { background: linear-gradient(90deg, transparent, #3498db, transparent); opacity: 0.5; }
+  .panel.enemies::before { background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.6; }
+
+  .panel-title { font-size: 10px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; font-family: 'Share Tech Mono', monospace; }
+  .panel-title.allies { color: #5dade2; }
+  .panel-title.enemies { color: var(--accent-bright); }
+  .panel-title.gold { color: var(--silver); }
+  .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 5px currentColor; flex-shrink: 0; }
+
+  /* Last pick position buttons */
+  .lastpick-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .lp-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 10px 6px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.2s;
+    opacity: 0.5;
+  }
+
+  .lp-btn:hover { opacity: 0.8; border-color: var(--muted); }
+
+  .lp-btn.selected {
+    border-color: var(--accent);
+    background: rgba(200,16,46,0.12);
+    box-shadow: 0 0 14px rgba(200,16,46,0.25), inset 0 0 8px rgba(200,16,46,0.05);
+    opacity: 1;
+  }
+
+  .lp-btn.likely { opacity: 0.85; }
+
+  .lp-pos { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+  .lp-btn.selected .lp-pos { color: var(--accent-bright); }
+
+  .lp-role { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 1px; }
+  .lp-btn.selected .lp-role { color: var(--silver-bright); }
+
+  .lp-freq { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; margin-top: 1px; }
+  .freq-high { color: #5dade2; }
+  .freq-mid { color: #a0a8b0; }
+  .freq-low { color: var(--muted); }
+
+  /* Hero position rows */
+  .position-row { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; margin-bottom: 10px; transition: opacity 0.2s; }
+  .position-row:last-child { margin-bottom: 0; }
+  .pos-label { display: flex; align-items: center; gap: 8px; }
+
+  .pos-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: 'Share Tech Mono', monospace; flex-shrink: 0; }
+  .allies .pos-num { background: rgba(52,152,219,0.15); color: #5dade2; border: 1px solid rgba(52,152,219,0.35); }
+
+  .pos-name { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-family: 'Share Tech Mono', monospace; white-space: nowrap; }
+
+  .pos-input {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px; font-weight: 600;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .pos-input::placeholder { color: var(--muted); font-weight: 400; font-size: 13px; }
+  .allies .pos-input:focus { border-color: #5dade2; box-shadow: 0 0 0 2px rgba(52,152,219,0.1); }
+  .enemies .pos-input:focus { border-color: var(--accent-bright); box-shadow: 0 0 0 2px rgba(200,16,46,0.12); }
+
+  /* Last pick slot styling */
+  .position-row.is-lastpick .pos-num {
+    background: rgba(200,16,46,0.2);
+    color: var(--accent-bright);
+    border-color: rgba(200,16,46,0.5);
+    box-shadow: 0 0 8px rgba(200,16,46,0.35);
+  }
+
+  .position-row.is-lastpick .pos-name { color: var(--accent-bright); }
+
+  .lastpick-slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(200,16,46,0.06);
+    border: 1px dashed rgba(200,16,46,0.4);
+    border-radius: 3px;
+    padding: 8px 12px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent-bright);
+    text-transform: uppercase;
+  }
+
+  .lastpick-pulse {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent-bright);
+    box-shadow: 0 0 6px var(--accent);
+    animation: pulse-dot 1.4s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse-dot { 0%,100%{opacity:0.3; transform:scale(0.8)} 50%{opacity:1; transform:scale(1.1)} }
+
+  /* Enemy rows */
+  .enemies .pos-num { background: rgba(200,16,46,0.18); color: var(--accent-bright); border: 1px solid rgba(200,16,46,0.4); }
+
+  /* Settings */
+  .field-group label { display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; font-family: 'Share Tech Mono', monospace; }
+
+  .field-group select, .field-group input[type="password"] {
+    width: 100%;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 15px; font-weight: 600;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .field-group input[type="password"] { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
+  .field-group select:focus, .field-group input[type="password"]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(200,16,46,0.1); }
+  .field-group select option { background: #141920; }
+
+  /* Button */
+  .btn-analyze {
+    width: 100%; padding: 15px;
+    background: linear-gradient(135deg, #7b0a1c 0%, #c8102e 35%, #ff2d4e 55%, #c8102e 75%, #7b0a1c 100%);
+    background-size: 200% 100%;
+    border: none; border-radius: 3px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #fff0f2;
+    cursor: pointer; text-transform: uppercase;
+    transition: background-position 0.4s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 0 20px rgba(200,16,46,0.25), 0 2px 0 rgba(0,0,0,0.4);
+    margin-bottom: 16px;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+
+  .btn-analyze:hover:not(:disabled) { background-position: 100% 0; box-shadow: 0 0 35px rgba(200,16,46,0.5), 0 2px 0 rgba(0,0,0,0.4); transform: translateY(-1px); }
+  .btn-analyze:active:not(:disabled) { transform: translateY(0); }
+  .btn-analyze:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* Loading */
+  .loading { display: none; text-align: center; padding: 36px 20px; }
+  .loading.active { display: block; }
+
+  .loading-orb { width: 50px; height: 50px; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--accent-bright); border-right-color: rgba(200,16,46,0.25); animation: spin 1s linear infinite; margin: 0 auto 14px; position: relative; }
+  .loading-orb::after { content: '⚔'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; animation: counter-spin 1s linear infinite; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes counter-spin { to { transform: rotate(-360deg); } }
+
+  .loading-text { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent-bright); letter-spacing: 2px; animation: pulse 1.5s ease-in-out infinite; }
+  .loading-step { margin-top: 10px; font-size: 11px; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
+  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  /* Error */
+  .error { display: none; }
+  .error.active { display: block; padding: 12px 16px; background: rgba(231,76,60,0.07); border: 1px solid rgba(231,76,60,0.25); border-radius: 4px; color: var(--red); font-size: 13px; margin-bottom: 14px; font-family: 'Share Tech Mono', monospace; }
+
+  /* Result */
+  .result { display: none; }
+  .result.active { display: block; }
+
+  .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  .result-badge { font-family: 'Cinzel Decorative', serif; font-size: 9px; letter-spacing: 2px; padding: 3px 9px; background: rgba(200,16,46,0.1); border: 1px solid rgba(200,16,46,0.3); border-radius: 2px; color: var(--accent-bright); }
+  .result-label { font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; font-family: 'Share Tech Mono', monospace; }
+
+  .pick-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; padding: 14px 16px; margin-bottom: 10px; position: relative; overflow: hidden; }
+  .pick-card.top-pick { border-color: rgba(200,16,46,0.4); background: rgba(200,16,46,0.04); }
+  .pick-card.top-pick::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+  .pick-card.alt-pick::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--muted); }
+
+  .pick-rank { font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; font-family: 'Share Tech Mono', monospace; margin-bottom: 4px; }
+  .top-pick .pick-rank { color: var(--accent-bright); }
+  .alt-pick .pick-rank { color: var(--muted); }
+
+  .pick-hero { font-family: 'Cinzel Decorative', serif; font-size: 18px; font-weight: 700; color: var(--silver); margin-bottom: 8px; }
+  .top-pick .pick-hero { color: var(--silver-bright); }
+
+  .pick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .tag { font-size: 10px; font-weight: 600; letter-spacing: 1px; padding: 2px 8px; border-radius: 2px; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; }
+  .tag.synergy { background: rgba(52,152,219,0.1); color: #5dade2; border: 1px solid rgba(52,152,219,0.2); }
+  .tag.counter { background: rgba(200,16,46,0.10); color: var(--accent-bright); border: 1px solid rgba(200,16,46,0.25); }
+  .tag.meta { background: rgba(180,180,180,0.08); color: #909aa4; border: 1px solid rgba(180,180,180,0.15); }
+
+  .pick-reason { font-size: 14px; line-height: 1.65; color: var(--text); }
+
+  .threat-note { background: rgba(231,76,60,0.05); border: 1px solid rgba(231,76,60,0.15); border-radius: 4px; padding: 12px 14px; margin-top: 4px; }
+  .threat-note-title { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); font-family: 'Share Tech Mono', monospace; margin-bottom: 6px; }
+  .threat-note p { font-size: 13px; line-height: 1.6; color: #c8cdd8; }
+
+  .result-raw { font-size: 14px; line-height: 1.75; color: var(--text); white-space: pre-wrap; }
+
+  footer { text-align: center; padding-top: 28px; font-size: 10px; color: var(--muted); letter-spacing: 2px; font-family: 'Share Tech Mono', monospace; }
+  footer em { color: rgba(200,16,46,0.6); font-style: normal; }
+
+  /* Autocomplete */
+  .autocomplete-wrap { position: relative; width: 100%; }
+  .autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 0; right: 0;
+    background: #1a2030;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    z-index: 999;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 12px rgba(201,168,76,0.1);
+    display: none;
+  }
+  .autocomplete-dropdown.open { display: block; }
+  .autocomplete-item {
+    padding: 8px 12px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 14px; font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: background 0.1s;
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover, .autocomplete-item.active {
+    background: rgba(200,16,46,0.12);
+    color: var(--silver-bright);
+  }
+  .autocomplete-item .hero-initial {
+    width: 22px; height: 22px; border-radius: 2px;
+    background: rgba(200,16,46,0.15); border: 1px solid rgba(200,16,46,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .autocomplete-item mark { background: none; color: var(--accent-bright); font-weight: 800; }
+  .autocomplete-dropdown::-webkit-scrollbar { width: 4px; }
+  .autocomplete-dropdown::-webkit-scrollbar-thumb { background: rgba(200,16,46,0.4); border-radius: 2px; }
+
+  /* Language switcher */
+  .lang-switcher {
+    position: absolute;
+    top: 20px;
+    right: 16px;
+    display: flex;
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .lang-btn {
+    padding: 5px 11px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: var(--panel2);
+    color: var(--muted);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .lang-btn:first-child { border-right: 1px solid var(--border2); }
+
+  .lang-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .lang-btn:hover:not(.active) {
+    background: rgba(200,16,46,0.1);
+    color: var(--text);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div style="position:relative">
+  <div class="lang-switcher">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" id="btn-ru" onclick="setLang('ru')">RU</button>
+  </div>
+  <header>
+    <div class="logo-line">
+      <div class="logo-ornament"></div>
+      <span style="font-size:24px;filter:drop-shadow(0 0 12px rgba(200,16,46,0.8))">⚔️</span>
+      <div class="logo-ornament right"></div>
+    </div>
+    <h1 data-i18n="title">Last Pick Oracle</h1>
+    <p class="subtitle" data-i18n="subtitle">Dota 2 Draft Analyzer · AI Powered</p>
+  </header>
+  </div>
+
+  <!-- Who is last picking -->
+  <div class="panel">
+    <div class="panel-title gold"><div class="dot"></div> <span data-i18n="whoLastPick">Who Is Last Picking?</span></div>
+    <div class="lastpick-btns">
+      <button class="lp-btn likely selected" data-pos="1" onclick="setLastPick(1)">
+        <span class="lp-pos">Pos 1</span>
+        <span class="lp-role">Carry</span>
+        <span class="lp-freq freq-high" data-i18n="mostCommon">Most common</span>
+      </button>
+      <button class="lp-btn likely" data-pos="2" onclick="setLastPick(2)">
+        <span class="lp-pos">Pos 2</span>
+        <span class="lp-role">Mid</span>
+        <span class="lp-freq freq-high" data-i18n="veryCommon">Very common</span>
+      </button>
+      <button class="lp-btn" data-pos="3" onclick="setLastPick(3)">
+        <span class="lp-pos">Pos 3</span>
+        <span class="lp-role" data-i18n="offLane">Off Lane</span>
+        <span class="lp-freq freq-mid" data-i18n="rare">Rare</span>
+      </button>
+      <button class="lp-btn" data-pos="4" onclick="setLastPick(4)">
+        <span class="lp-pos">Pos 4</span>
+        <span class="lp-role" data-i18n="support">Support</span>
+        <span class="lp-freq freq-low" data-i18n="veryRare">Very rare</span>
+      </button>
+      <button class="lp-btn" data-pos="5" onclick="setLastPick(5)">
+        <span class="lp-pos">Pos 5</span>
+        <span class="lp-role" data-i18n="hardSupp">Hard Supp</span>
+        <span class="lp-freq freq-low" data-i18n="almostNever">Almost never</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Allied Team -->
+  <div class="panel allies">
+    <div class="panel-title allies"><div class="dot"></div> <span data-i18n="yourTeam">Your Team — Fill the 4 Already Picked</span></div>
+    <div class="position-row" id="ally-row-1">
+      <div class="pos-label"><div class="pos-num">1</div><div class="pos-name">Carry</div></div>
+      <div class="lastpick-slot"><div class="lastpick-pulse"></div><span data-i18n="lastPickSlot">Last Pick Slot</span></div>
+    </div>
+    <div class="position-row" id="ally-row-2">
+      <div class="pos-label"><div class="pos-num">2</div><div class="pos-name">Mid</div></div>
+      <input class="pos-input" id="ally-2" type="text" placeholder="e.g. Lina" autocomplete="off">
+    </div>
+    <div class="position-row" id="ally-row-3">
+      <div class="pos-label"><div class="pos-num">3</div><div class="pos-name">Off Lane</div></div>
+      <input class="pos-input" id="ally-3" type="text" placeholder="e.g. Axe" autocomplete="off">
+    </div>
+    <div class="position-row" id="ally-row-4">
+      <div class="pos-label"><div class="pos-num">4</div><div class="pos-name">Support</div></div>
+      <input class="pos-input" id="ally-4" type="text" placeholder="e.g. Earth Spirit" autocomplete="off">
+    </div>
+    <div class="position-row" id="ally-row-5">
+      <div class="pos-label"><div class="pos-num">5</div><div class="pos-name">Hard Supp</div></div>
+      <input class="pos-input" id="ally-5" type="text" placeholder="e.g. Crystal Maiden" autocomplete="off">
+    </div>
+  </div>
+
+  <!-- Enemy Team -->
+  <div class="panel enemies">
+    <div class="panel-title enemies"><div class="dot"></div> <span data-i18n="enemyTeam">Enemy Team — 4 Known Heroes</span></div>
+    <div class="position-row">
+      <div class="pos-label"><div class="pos-num enemy-num">1</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
+      <input class="pos-input" id="enemy-1" type="text" placeholder="e.g. Phantom Assassin" autocomplete="off">
+    </div>
+    <div class="position-row">
+      <div class="pos-label"><div class="pos-num enemy-num">2</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
+      <input class="pos-input" id="enemy-2" type="text" placeholder="e.g. Invoker" autocomplete="off">
+    </div>
+    <div class="position-row">
+      <div class="pos-label"><div class="pos-num enemy-num">3</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
+      <input class="pos-input" id="enemy-3" type="text" placeholder="e.g. Tidehunter" autocomplete="off">
+    </div>
+    <div class="position-row">
+      <div class="pos-label"><div class="pos-num enemy-num">4</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
+      <input class="pos-input" id="enemy-4" type="text" placeholder="e.g. Lion" autocomplete="off">
+    </div>
+    <div class="position-row" id="enemy-row-5">
+      <div class="pos-label"><div class="pos-num" style="background:rgba(200,16,46,0.08);border-style:dashed;opacity:0.7">?</div><div class="pos-name" style="color:var(--muted)" data-i18n="expectedPick">Expected</div></div>
+      <input class="pos-input" id="enemy-5" type="text" placeholder="Their expected last pick (optional)" autocomplete="off" style="border-style:dashed;opacity:0.75">
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="panel">
+    <div class="panel-title gold"><div class="dot"></div> <span data-i18n="matchSettings">Match Settings</span></div>
+    <div class="field-group">
+      <label data-i18n="skillBracket">Skill Bracket</label>
+      <select id="bracket">
+        <option>Immortal / Pro</option>
+        <option>Divine</option>
+        <option>Ancient</option>
+        <option>Legend</option>
+        <option>Archon</option>
+        <option>Crusader</option>
+        <option>Guardian</option>
+        <option>Herald</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- API Key -->
+  <div class="panel">
+    <div class="panel-title gold"><div class="dot"></div> Anthropic API Key</div>
+    <div class="field-group">
+      <label data-i18n="apiKeyLabel">Your key stays in your browser only</label>
+      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+    </div>
+  </div>
+
+  <div class="error" id="error-box"></div>
+
+  <button class="btn-analyze" id="analyze-btn" onclick="analyze()"><span data-i18n="analyzeBtn">⚔ &nbsp;Consult the Oracle&nbsp; ⚔</span></button>
+
+  <div class="loading" id="loading">
+    <div class="loading-orb"></div>
+    <div class="loading-text" data-i18n="analyzing">ANALYZING DRAFT</div>
+    <div class="loading-step" id="loading-step">Evaluating hero matchups...</div>
+  </div>
+
+  <div class="panel result" id="result-panel">
+    <div class="result-header">
+      <div class="result-badge" data-i18n="oracle">Oracle</div>
+      <div class="result-label" data-i18n="recommendation">Last Pick Recommendation</div>
+    </div>
+    <div id="result-content"></div>
+  </div>
+
+  <footer>
+    <em>⚔</em> &nbsp;Last Pick Oracle · Dota 2 Draft Tool&nbsp; <em>⚔</em><br><br>
+    <span data-i18n="footerText">Analysis based on DotaBuff · Liquipedia · ProTracker meta</span>
+  </footer>
+
+</div>
+
+<script>
+  const posLabels = ['Carry', 'Mid', 'Off Lane', 'Support', 'Hard Support'];
+  const posPlaceholders = ['e.g. Juggernaut', 'e.g. Lina', 'e.g. Axe', 'e.g. Earth Spirit', 'e.g. Crystal Maiden'];
+
+  let currentLastPick = 1; // default: Carry last picks
+
+
+  // ── Full Dota 2 Hero Roster ──
+  const HEROES = [
+    'Abaddon','Alchemist','Ancient Apparition','Anti-Mage','Arc Warden',
+    'Axe','Bane','Batrider','Beastmaster','Bloodseeker',
+    'Bounty Hunter','Brewmaster','Bristleback','Broodmother','Centaur Warrunner',
+    'Chaos Knight','Chen','Clinkz','Clockwerk','Crystal Maiden',
+    'Dark Seer','Dark Willow','Dawnbreaker','Dazzle','Death Prophet',
+    'Disruptor','Doom','Dragon Knight','Drow Ranger','Earth Spirit',
+    'Earthshaker','Elder Titan','Ember Spirit','Enchantress','Enigma',
+    'Faceless Void','Grimstroke','Gyrocopter','Hoodwink','Huskar',
+    'Invoker','Io','Jakiro','Juggernaut','Keeper of the Light',
+    'Kez','Kunkka','Legion Commander','Leshrac','Lich',
+    'Lifestealer','Lina','Lion','Lone Druid','Luna',
+    'Lycan','Magnus','Marci','Mars','Medusa',
+    'Meepo','Mirana','Monkey King','Morphling','Muerta',
+    'Naga Siren',"Nature's Prophet",'Necrophos','Night Stalker','Nyx Assassin',
+    'Ogre Magi','Omniknight','Oracle','Outworld Destroyer','Pangolier',
+    'Phantom Assassin','Phantom Lancer','Phoenix','Primal Beast','Puck',
+    'Pudge','Pugna','Queen of Pain','Razor','Riki',
+    'Ringmaster','Rubick','Sand King','Shadow Demon','Shadow Fiend',
+    'Shadow Shaman','Silencer','Skywrath Mage','Slardar','Slark',
+    'Snapfire','Sniper','Spectre','Spirit Breaker','Storm Spirit',
+    'Sven','Techies','Templar Assassin','Terrorblade','Tidehunter',
+    'Timbersaw','Tinker','Tiny','Treant Protector','Troll Warlord',
+    'Tusk','Underlord','Undying','Ursa','Vengeful Spirit',
+    'Venomancer','Viper','Visage','Void Spirit','Warlock',
+    'Weaver','Windranger','Winter Wyvern','Witch Doctor','Wraith King',
+    'Zeus'
+  ];
+
+  function highlightMatch(name, query) {
+    const idx = name.toLowerCase().indexOf(query.toLowerCase());
+    if (idx === -1) return name;
+    return name.slice(0, idx) + '<mark>' + name.slice(idx, idx + query.length) + '</mark>' + name.slice(idx + query.length);
+  }
+
+  function setupAutocomplete(input) {
+    // Wrap input in relative container
+    const wrap = document.createElement('div');
+    wrap.className = 'autocomplete-wrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'autocomplete-dropdown';
+    wrap.appendChild(dropdown);
+
+    let activeIdx = -1;
+    let currentMatches = [];
+
+    function showDropdown(query) {
+      if (!query || query.length < 1) { dropdown.classList.remove('open'); return; }
+      currentMatches = HEROES.filter(h => h.toLowerCase().includes(query.toLowerCase())).slice(0, 8);
+      if (!currentMatches.length) { dropdown.classList.remove('open'); return; }
+
+      activeIdx = -1;
+      dropdown.innerHTML = currentMatches.map((h, i) => `
+        <div class="autocomplete-item" data-idx="${i}">
+          <span class="hero-initial">${h[0]}</span>
+          ${highlightMatch(h, query)}
+        </div>
+      `).join('');
+
+      dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          input.value = currentMatches[parseInt(item.dataset.idx)];
+          dropdown.classList.remove('open');
+          input.dispatchEvent(new Event('change'));
+        });
+      });
+
+      dropdown.classList.add('open');
+    }
+
+    function setActive(idx) {
+      const items = dropdown.querySelectorAll('.autocomplete-item');
+      items.forEach(i => i.classList.remove('active'));
+      if (idx >= 0 && idx < items.length) {
+        items[idx].classList.add('active');
+        items[idx].scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    input.addEventListener('input', () => showDropdown(input.value));
+    input.addEventListener('focus', () => { if (input.value) showDropdown(input.value); });
+
+    input.addEventListener('keydown', (e) => {
+      if (!dropdown.classList.contains('open')) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, currentMatches.length - 1); setActive(activeIdx); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); setActive(activeIdx); }
+      else if (e.key === 'Enter' || e.key === 'Tab') {
+        if (activeIdx >= 0) { e.preventDefault(); input.value = currentMatches[activeIdx]; dropdown.classList.remove('open'); }
+        else if (currentMatches.length === 1) { e.preventDefault(); input.value = currentMatches[0]; dropdown.classList.remove('open'); }
+      }
+      else if (e.key === 'Escape') { dropdown.classList.remove('open'); }
+    });
+
+    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) dropdown.classList.remove('open'); });
+  }
+
+  function attachAutocompletes() {
+    document.querySelectorAll('.pos-input').forEach(inp => {
+      if (!inp.closest('.autocomplete-wrap')) setupAutocomplete(inp);
+    });
+  }
+
+  function setLastPick(pos) {
+    currentLastPick = pos;
+
+    // Update buttons
+    document.querySelectorAll('.lp-btn').forEach(btn => {
+      btn.classList.toggle('selected', parseInt(btn.dataset.pos) === pos);
+    });
+
+    // Update ally rows: show lastpick slot for selected pos, inputs for others
+    for (let i = 1; i <= 5; i++) {
+      const row = document.getElementById(`ally-row-${i}`);
+      if (!row) continue;
+
+      const posLabel = row.querySelector('.pos-name');
+      const inputCell = row.querySelector('.pos-input') || row.querySelector('.lastpick-slot');
+
+      if (i === pos) {
+        row.classList.add('is-lastpick');
+        // Replace input with lastpick slot if needed
+        if (row.querySelector('.pos-input')) {
+          const inp = row.querySelector('.pos-input');
+          const slot = document.createElement('div');
+          slot.className = 'lastpick-slot';
+          slot.innerHTML = '<div class="lastpick-pulse"></div>Last Pick Slot';
+          inp.replaceWith(slot);
+        }
+      } else {
+        row.classList.remove('is-lastpick');
+        // Replace lastpick slot with input if needed
+        if (row.querySelector('.lastpick-slot')) {
+          const slot = row.querySelector('.lastpick-slot');
+          const inp = document.createElement('input');
+          inp.className = 'pos-input';
+          inp.id = `ally-${i}`;
+          inp.type = 'text';
+          inp.placeholder = posPlaceholders[i - 1];
+          inp.autocomplete = 'off';
+          slot.replaceWith(inp);
+        }
+        // Make sure input has correct id
+        const inp = row.querySelector('.pos-input');
+        if (inp) inp.id = `ally-${i}`;
+      }
+    }
+    // Re-attach autocompletes for any newly created inputs
+    setTimeout(attachAutocompletes, 0);
+  }
+
+  // Init: set carry as last pick
+  setLastPick(1);
+  attachAutocompletes();
+
+  const loadingSteps = [
+    "Evaluating hero matchups...",
+    "Checking ally synergies...",
+    "Scanning counter-pick options...",
+    "Assessing current meta...",
+    "Consulting the Oracle..."
+  ];
+
+
+  // ── Translations ──
+  const TRANSLATIONS = {
+    en: {
+      title: 'Last Pick Oracle',
+      subtitle: 'Dota 2 Draft Analyzer · AI Powered',
+      whoLastPick: 'Who Is Last Picking?',
+      mostCommon: 'Most common',
+      veryCommon: 'Very common',
+      offLane: 'Off Lane',
+      rare: 'Rare',
+      support: 'Support',
+      hardSupp: 'Hard Supp',
+      veryRare: 'Very rare',
+      almostNever: 'Almost never',
+      yourTeam: 'Your Team — Fill the 4 Already Picked',
+      enemyTeam: 'Enemy Team — 4 Known Heroes',
+      expectedPick: 'Expected',
+      expectedPlaceholder: 'Their expected last pick (optional)',
+      matchSettings: 'Match Settings',
+      skillBracket: 'Skill Bracket',
+      apiKeyLabel: 'Your key stays in your browser only',
+      analyzeBtn: '⚔  Consult the Oracle  ⚔',
+      analyzing: 'ANALYZING DRAFT',
+      oracle: 'Oracle',
+      recommendation: 'Last Pick Recommendation',
+      footerText: 'Analysis based on DotaBuff · Liquipedia · ProTracker meta',
+      lastPickSlot: 'Last Pick Slot',
+      carry: 'Carry', mid: 'Mid',
+      posNames: ['Carry', 'Mid', 'Off Lane', 'Support', 'Hard Support'],
+      placeholders: ['e.g. Juggernaut', 'e.g. Lina', 'e.g. Axe', 'e.g. Earth Spirit', 'e.g. Crystal Maiden'],
+      enemyPlaceholders: ['e.g. Phantom Assassin', 'e.g. Invoker', 'e.g. Tidehunter', 'e.g. Lion'],
+      enemyHero: 'Enemy Hero',
+      errApiKey: '⚠ Please enter your Anthropic API key.',
+      errAllies: '⚠ Please enter at least 2 ally heroes (excluding the last pick slot).',
+      errEnemies: '⚠ Please enter at least 2 enemy heroes.',
+      loadingSteps: ['Searching patch 7.41c data...', 'Checking DotaBuff win rates...', 'Scanning current meta...', 'Evaluating synergies & counters...', 'Consulting the Oracle...'],
+      bestPick: '🥇 Best Pick', alt: '🥈 Alternative', safe: '🥉 Safe Option',
+      keyThreat: '⚠ Key Threat',
+      brackets: ['Immortal / Pro', 'Divine', 'Ancient', 'Legend', 'Archon', 'Crusader', 'Guardian', 'Herald'],
+    },
+    ru: {
+      title: 'Last Pick Oracle',
+      subtitle: 'Анализатор Драфта Dota 2 · На базе ИИ',
+      whoLastPick: 'Кто пикует последним?',
+      mostCommon: 'Очень часто',
+      veryCommon: 'Часто',
+      offLane: 'Оффлейн',
+      rare: 'Редко',
+      support: 'Саппорт',
+      hardSupp: 'Хард Сапп',
+      veryRare: 'Очень редко',
+      almostNever: 'Почти никогда',
+      yourTeam: 'Ваша команда — 4 уже выбранных героя',
+      enemyTeam: 'Команда врага — 4 известных героя',
+      expectedPick: 'Ожидаемый',
+      expectedPlaceholder: 'Ожидаемый последний пик врага (необязательно)',
+      matchSettings: 'Настройки матча',
+      skillBracket: 'Ранг',
+      apiKeyLabel: 'Ключ хранится только в вашем браузере',
+      analyzeBtn: '⚔  Спросить Оракула  ⚔',
+      analyzing: 'АНАЛИЗ ДРАФТА',
+      oracle: 'Оракул',
+      recommendation: 'Рекомендация последнего пика',
+      footerText: 'Анализ на основе DotaBuff · Liquipedia · ProTracker',
+      lastPickSlot: 'Слот последнего пика',
+      carry: 'Керри', mid: 'Мид',
+      posNames: ['Керри', 'Мид', 'Оффлейн', 'Саппорт', 'Хард Сапп'],
+      placeholders: ['напр. Juggernaut', 'напр. Lina', 'напр. Axe', 'напр. Earth Spirit', 'напр. Crystal Maiden'],
+      enemyPlaceholders: ['напр. Phantom Assassin', 'напр. Invoker', 'напр. Tidehunter', 'напр. Lion'],
+      enemyHero: 'Герой врага',
+      errApiKey: '⚠ Введите ваш API ключ Anthropic.',
+      errAllies: '⚠ Введите минимум 2 героя вашей команды (кроме слота последнего пика).',
+      errEnemies: '⚠ Введите минимум 2 героя противника.',
+      loadingSteps: ['Ищем данные патча 7.41c...', 'Проверяем винрейты DotaBuff...', 'Анализируем текущую мету...', 'Оцениваем синергии и контрпики...', 'Консультируемся с Оракулом...'],
+      bestPick: '🥇 Лучший пик', alt: '🥈 Альтернатива', safe: '🥉 Безопасный вариант',
+      keyThreat: '⚠ Главная угроза',
+      brackets: ['Титан / Про', 'Божество', 'Властелин', 'Легенда', 'Герой', 'Рыцарь', 'Страж', 'Рекрут'],
+    }
+  };
+
+  let currentLang = 'en';
+
+  function setLang(lang) {
+    currentLang = lang;
+    const t = TRANSLATIONS[lang];
+
+    // Update buttons
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    document.getElementById('btn-ru').classList.toggle('active', lang === 'ru');
+
+    // Update all data-i18n elements
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      if (t[key] !== undefined) el.innerHTML = t[key];
+    });
+
+    // Update position labels in rows
+    posLabels.splice(0, posLabels.length, ...t.posNames);
+    posPlaceholders.splice(0, posPlaceholders.length, ...t.placeholders);
+
+    // Update pos-name labels in ally rows
+    for (let i = 1; i <= 5; i++) {
+      const row = document.getElementById('ally-row-' + i);
+      if (row) {
+        const nameEl = row.querySelector('.pos-name');
+        if (nameEl) nameEl.textContent = t.posNames[i - 1];
+        const inp = row.querySelector('.pos-input');
+        if (inp) inp.placeholder = t.placeholders[i - 1];
+        const slot = row.querySelector('.lastpick-slot span[data-i18n]');
+        if (slot) slot.innerHTML = t.lastPickSlot;
+      }
+    }
+
+    // Update enemy placeholders
+    for (let i = 1; i <= 4; i++) {
+      const inp = document.getElementById('enemy-' + i);
+      if (inp) inp.placeholder = t.enemyPlaceholders[i - 1];
+    }
+
+    // Update enemy hero labels
+    document.querySelectorAll('[data-i18n-enemy]').forEach(el => {
+      const key = el.dataset.i18nEnemy;
+      if (t[key]) el.textContent = t[key];
+    });
+
+    // Update expected last pick placeholder
+    const enemy5inp = document.getElementById('enemy-5');
+    if (enemy5inp) enemy5inp.placeholder = t.expectedPlaceholder;
+    const enemy5label = document.querySelector('#enemy-row-5 .pos-name');
+    if (enemy5label) enemy5label.textContent = t.expectedPick;
+
+    // Update bracket options
+    const bracketSelect = document.getElementById('bracket');
+    const currentIdx = bracketSelect.selectedIndex;
+    bracketSelect.innerHTML = t.brackets.map(b => `<option>${b}</option>`).join('');
+    bracketSelect.selectedIndex = currentIdx;
+
+    // Update lp-btn freq/role labels
+    const freqKeys = ['mostCommon', 'veryCommon', 'rare', 'veryRare', 'almostNever'];
+    const roleKeys = ['carry', 'mid', 'offLane', 'support', 'hardSupp'];
+    document.querySelectorAll('.lp-btn').forEach((btn, idx) => {
+      const freq = btn.querySelector('[data-i18n]');
+      const role = btn.querySelector('.lp-role[data-i18n]');
+      if (freq) freq.innerHTML = t[freqKeys[idx]] || freq.innerHTML;
+      if (role) role.innerHTML = t[roleKeys[idx]] || role.innerHTML;
+    });
+
+    // Update loading steps
+    loadingSteps.splice(0, loadingSteps.length, ...t.loadingSteps);
+  }
+
+  let loadingInterval;
+  function startLoading() {
+    let i = 0;
+    const el = document.getElementById('loading-step');
+    el.textContent = loadingSteps[0];
+    loadingInterval = setInterval(() => { i = (i+1) % loadingSteps.length; el.textContent = loadingSteps[i]; }, 2000);
+  }
+  function stopLoading() { clearInterval(loadingInterval); }
+
+  function getField(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+
+  function buildPrompt(allies, enemies, lastPos, bracket, metaSummary, expectedEnemy5) {
+    const posName = posLabels[lastPos - 1];
+    const allyLines = allies.map((h, i) => {
+      const pNum = i + 1;
+      if (pNum === lastPos) return `  - Pos ${pNum} ${posLabels[i]}: [LAST PICK — to be determined]`;
+      return h ? `  - Pos ${pNum} ${posLabels[i]}: ${h}` : null;
+    }).filter(Boolean).join('\n');
+
+    const enemy5line = expectedEnemy5
+      ? `  - Enemy Hero 5 (Expected Last Pick): ${expectedEnemy5}`
+      : `  - Enemy Hero 5 (Last Pick): [UNKNOWN — enemy is also last picking]`;
+    const enemyLines = [
+      ...enemies.map((h, i) => h ? `  - Enemy Hero ${i+1}: ${h}` : null).filter(Boolean),
+      enemy5line
+    ].join('\n');
+
+    return `You are a Dota 2 draft expert. Give a concise last pick recommendation.
+
+DRAFT:
+My team (4 already picked, 1 slot open):
+${allyLines}
+
+Enemy team — 4 known heroes (positions unknown, their 5th is also a last pick):
+${enemyLines}
+
+The LAST PICK is for: Position ${lastPos} (${posName})
+${expectedEnemy5 ? `IMPORTANT: The enemy is expected to last pick ${expectedEnemy5}. Factor this into your recommendation — pick a hero that handles both their current 4 AND their expected last pick.` : `IMPORTANT: Both teams are last picking simultaneously. The enemy last pick is unknown — recommend heroes that are strong regardless or hard to counter-pick.`}
+Skill bracket: ${bracket}
+
+Current patch: 7.41c (May 2026)
+${metaSummary ? `Live meta data from web search:\n${metaSummary}\n` : ''}
+Respond in this EXACT JSON format only, no extra text, no markdown, no code blocks:
+{
+  "pick1": {
+    "hero": "Hero Name",
+    "tags": ["synergy with X", "counters Y", "meta pick"],
+    "reason": "2-3 sentences on why this hero wins — focus on synergies with allies and what it brings to the draft."
+  },
+  "pick2": {
+    "hero": "Hero Name",
+    "tags": ["synergy with X", "counters Y"],
+    "reason": "2-3 sentences."
+  },
+  "pick3": {
+    "hero": "Hero Name",
+    "tags": ["safe pick", "counters Y"],
+    "reason": "2-3 sentences."
+  },
+  "threat": "One sentence on the single biggest danger from the enemy lineup."
+}`;
+  }
+
+  function tagClass(tag) {
+    const t = tag.toLowerCase();
+    if (t.includes('s-tier') || t.includes('a-tier') || t.includes('b-tier') || t.includes('meta') || t.includes('patch')) return 'meta';
+    if (t.includes('synerg') || t.includes('with') || t.includes('combo') || t.includes('safe')) return 'synergy';
+    if (t.includes('counter') || t.includes('beats') || t.includes('against')) return 'counter';
+    return 'meta';
+  }
+
+  function renderResult(data) {
+    let html = '';
+    const picks = [
+      { key: 'pick1', label: () => TRANSLATIONS[currentLang].bestPick, cls: 'top-pick' },
+      { key: 'pick2', label: () => TRANSLATIONS[currentLang].alt, cls: 'alt-pick' },
+      { key: 'pick3', label: () => TRANSLATIONS[currentLang].safe, cls: 'alt-pick' },
+    ];
+
+    for (const { key, label, cls } of picks) {
+      const p = data[key];
+      if (!p) continue;
+      const tags = (p.tags || []).map(t => `<span class="tag ${tagClass(t)}">${t}</span>`).join('');
+      const labelText = typeof label === 'function' ? label() : label;
+      html += `<div class="pick-card ${cls}">
+        <div class="pick-rank">${labelText}</div>
+        <div class="pick-hero">${p.hero}</div>
+        <div class="pick-tags">${tags}</div>
+        <div class="pick-reason">${p.reason}</div>
+      </div>`;
+    }
+
+    if (data.threat) {
+      html += `<div class="threat-note">
+        <div class="threat-note-title">${TRANSLATIONS[currentLang].keyThreat}</div>
+        <p>${data.threat}</p>
+      </div>`;
+    }
+
+    document.getElementById('result-content').innerHTML = html;
+  }
+
+  function renderRaw(text) {
+    const formatted = text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/^#{1,3} (.+)$/gm, '<strong style="font-size:16px;color:var(--gold-bright);display:block;margin:12px 0 4px">$1</strong>')
+      .replace(/^- (.+)$/gm, '&nbsp;&nbsp;• $1')
+      .replace(/\n/g, '<br>');
+    document.getElementById('result-content').innerHTML = `<div class="result-raw">${formatted}</div>`;
+  }
+
+  async function analyze() {
+    const allies = [1,2,3,4,5].map(i => getField(`ally-${i}`));
+    const enemies = [1,2,3,4].map(i => getField(`enemy-${i}`));
+    const expectedEnemy5 = getField('enemy-5');
+    const apiKey = getField('api-key');
+    const bracket = document.getElementById('bracket').value;
+
+    const errorBox = document.getElementById('error-box');
+    errorBox.className = 'error';
+
+    if (!apiKey) { errorBox.textContent = TRANSLATIONS[currentLang].errApiKey; errorBox.className = 'error active'; return; }
+
+    // Count filled ally slots (excluding last pick slot)
+    const filledAllies = allies.filter((h, i) => (i + 1) !== currentLastPick && h).length;
+    const filledEnemies = enemies.filter(Boolean).length;
+
+    if (filledAllies < 2) { errorBox.textContent = TRANSLATIONS[currentLang].errAllies; errorBox.className = 'error active'; return; }
+    if (filledEnemies < 2) { errorBox.textContent = TRANSLATIONS[currentLang].errEnemies; errorBox.className = 'error active'; return; }
+
+    document.getElementById('analyze-btn').disabled = true;
+    document.getElementById('loading').className = 'loading active';
+    document.getElementById('result-panel').className = 'panel result';
+    startLoading();
+
+    try {
+      // ── STEP 1: Sonnet with web search fetches current patch meta ──
+      const heroList = [...allies.filter((h,i) => (i+1) !== currentLastPick && h), ...enemies.filter(Boolean), ...(expectedEnemy5 ? [expectedEnemy5] : [])];
+      const searchPrompt = `Search DotaBuff and patch notes for Dota 2 patch 7.41c (May 2026). 
+Find current win rates, meta strength, and any recent buffs/nerfs for these heroes: ${heroList.join(', ')}.
+Also find what Position ${currentLastPick} heroes are strong in the current 7.41c meta.
+Summarize the key findings in 200 words max. Focus only on gameplay-relevant data.`;
+
+      const searchResp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 600,
+          tools: [{ type: "web_search_20250305", name: "web_search" }],
+          system: "You are a Dota 2 data analyst. Search for current patch data and summarize it concisely. Always complete the web search before responding.",
+          messages: [{ role: "user", content: searchPrompt }]
+        })
+      });
+
+      if (!searchResp.ok) {
+        const err = await searchResp.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API error ${searchResp.status}`);
+      }
+
+      const searchData = await searchResp.json();
+      if (!searchData.content || !Array.isArray(searchData.content)) throw new Error("Unexpected API response.");
+
+      // Extract all text from search response (skip tool_use blocks)
+      const metaSummary = searchData.content
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('\n')
+        .trim() || 'No additional patch data found.';
+
+      // ── STEP 2: Haiku uses the search data to produce fast JSON analysis ──
+      const analysisResp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 700,
+          system: "You are an expert Dota 2 draft analyst. Always respond with valid JSON only — no markdown, no code blocks, no extra text before or after the JSON. Be concise.",
+          messages: [{ role: "user", content: buildPrompt(allies, enemies, currentLastPick, bracket, metaSummary, expectedEnemy5) }]
+        })
+      });
+
+      if (!analysisResp.ok) {
+        const err = await analysisResp.json().catch(() => ({}));
+        throw new Error(err.error?.message || `API error ${analysisResp.status}`);
+      }
+
+      const analysisData = await analysisResp.json();
+      if (!analysisData.content || !Array.isArray(analysisData.content)) throw new Error("Unexpected API response.");
+
+      const textBlocks = analysisData.content.filter(b => b.type === 'text');
+      if (!textBlocks.length) throw new Error("No response received. Please try again.");
+
+      const rawText = textBlocks.map(b => b.text).join('');
+
+      stopLoading();
+      document.getElementById('loading').className = 'loading';
+      document.getElementById('result-panel').className = 'panel result active';
+
+      try {
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error('no json');
+        renderResult(JSON.parse(jsonMatch[0]));
+      } catch {
+        renderRaw(rawText);
+      }
+
+    } catch (err) {
+      stopLoading();
+      document.getElementById('loading').className = 'loading';
+      errorBox.textContent = '⚠ ' + err.message;
+      errorBox.className = 'error active';
+    }
+
+    document.getElementById('analyze-btn').disabled = false;
+  }
+</script>
+</body>
+</html>
