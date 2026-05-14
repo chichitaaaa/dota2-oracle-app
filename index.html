@@ -992,10 +992,9 @@ Summarize the key findings in 200 words max. Focus only on gameplay-relevant dat
           "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 600,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          system: "You are a Dota 2 data analyst. Search for current patch data and summarize it concisely. Always complete the web search before responding.",
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 400,
+          system: "You are a Dota 2 meta expert with knowledge up to patch 7.41c. Summarize current meta strength and recent changes for the given heroes in under 150 words.",
           messages: [{ role: "user", content: searchPrompt }]
         })
       });
