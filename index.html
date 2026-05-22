@@ -2,1069 +2,1175 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dota 2 Last Pick Oracle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dota 2 Oracle</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --accent: #c8102e;
-    --accent-bright: #ff2d4e;
-    --accent-dim: #8b0c20;
-    --silver: #c8d0d8;
-    --silver-bright: #eef1f4;
-    --green: #27ae60;
-    --dark: #080808;
-    --panel: #0e0e0e;
-    --panel2: #141414;
-    --panel3: #1a1a1a;
-    --border: #2a2020;
-    --border2: #3a1520;
-    --text: #b0b8c0;
-    --muted: #505860;
-  }
+:root {
+  --accent: #c8102e;
+  --accent-bright: #ff2d4e;
+  --silver: #c8d0d8;
+  --silver-bright: #eef1f4;
+  --dark: #080808;
+  --panel: #0e0e0e;
+  --panel2: #141414;
+  --border: #2a2020;
+  --border2: #3a1520;
+  --text: #b0b8c0;
+  --muted: #505860;
+  --green: #27ae60;
+  --blue: #5dade2;
+}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-  body {
-    background: var(--dark);
-    color: var(--text);
-    font-family: 'Rajdhani', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 70% 50% at 50% -10%, rgba(200,16,46,0.12) 0%, transparent 65%),
-      radial-gradient(ellipse 40% 30% at 50% 100%, rgba(200,16,46,0.06) 0%, transparent 60%),
-      repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(200,16,46,0.018) 80px, rgba(200,16,46,0.018) 81px),
-      repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(200,16,46,0.018) 80px, rgba(200,16,46,0.018) 81px);
-    pointer-events: none;
-    z-index: 0;
-  }
+body::before {
+  content:'';
+  position:fixed;
+  inset:0;
+  background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(200,16,46,0.08) 0%, transparent 65%);
+  pointer-events:none;
+  z-index:0;
+}
 
-  .container { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; position: relative; z-index: 1; }
+/* ── Top Nav ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 0;
+  position: relative;
+  z-index: 10;
+}
 
-  header { text-align: center; padding: 32px 0 24px; }
+.logo {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 13px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #c8102e, #ff2d4e, #c8102e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 2px;
+}
 
-  .logo-line { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 8px; }
-  .logo-ornament { width: 60px; height: 1px; background: linear-gradient(90deg, transparent, var(--accent)); }
-  .logo-ornament.right { background: linear-gradient(90deg, var(--accent), transparent); }
+.lang-sw {
+  display: flex;
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  overflow: hidden;
+}
 
-  h1 {
-    font-family: 'Cinzel Decorative', serif;
-    font-size: clamp(16px, 3.5vw, 26px);
-    font-weight: 900;
-    letter-spacing: 3px;
-    background: linear-gradient(135deg, #c8102e 0%, #ff2d4e 40%, #ff6b7a 60%, #ff2d4e 80%, #c8102e 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
+.lang-sw button {
+  padding: 3px 9px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--panel2);
+  color: var(--muted);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
 
-  .subtitle { font-size: 11px; letter-spacing: 4px; color: var(--muted); text-transform: uppercase; margin-top: 5px; font-family: 'Share Tech Mono', monospace; }
+.lang-sw button.active { background: var(--accent); color: #fff; }
 
-  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 18px; margin-bottom: 14px; position: relative; }
-  .panel::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 4px 4px 0 0; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.5; }
-  .panel.allies::before { background: linear-gradient(90deg, transparent, #3498db, transparent); opacity: 0.5; }
-  .panel.enemies::before { background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.6; }
+/* ── Tab Nav ── */
+.tab-nav {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 10px 12px 0;
+  gap: 4px;
+  position: relative;
+  z-index: 10;
+}
 
-  .panel-title { font-size: 10px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; font-family: 'Share Tech Mono', monospace; }
-  .panel-title.allies { color: #5dade2; }
-  .panel-title.enemies { color: var(--accent-bright); }
-  .panel-title.gold { color: var(--silver); }
-  .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 5px currentColor; flex-shrink: 0; }
+.tab-nav::-webkit-scrollbar { display: none; }
 
-  /* Last pick position buttons */
-  .lastpick-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab-btn {
+  flex-shrink: 0;
+  padding: 7px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
 
-  .lp-btn {
-    flex: 1;
-    min-width: 80px;
-    padding: 10px 6px;
-    background: var(--panel2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    transition: all 0.2s;
-    opacity: 0.5;
-  }
+.tab-btn.active {
+  background: rgba(200,16,46,0.12);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  box-shadow: 0 0 10px rgba(200,16,46,0.15);
+}
 
-  .lp-btn:hover { opacity: 0.8; border-color: var(--muted); }
+/* ── Content ── */
+.container { padding: 12px 14px 80px; position: relative; z-index: 1; }
 
-  .lp-btn.selected {
-    border-color: var(--accent);
-    background: rgba(200,16,46,0.12);
-    box-shadow: 0 0 14px rgba(200,16,46,0.25), inset 0 0 8px rgba(200,16,46,0.05);
-    opacity: 1;
-  }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
 
-  .lp-btn.likely { opacity: 0.85; }
+/* ── Panels ── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px;
+  margin-bottom: 12px;
+  position: relative;
+}
 
-  .lp-pos { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
-  .lp-btn.selected .lp-pos { color: var(--accent-bright); }
+.panel::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height:2px;
+  border-radius:4px 4px 0 0;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity:0.4;
+}
 
-  .lp-role { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 1px; }
-  .lp-btn.selected .lp-role { color: var(--silver-bright); }
+.panel.blue::before { background: linear-gradient(90deg, transparent, var(--blue), transparent); }
+.panel.green::before { background: linear-gradient(90deg, transparent, var(--green), transparent); }
 
-  .lp-freq { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; margin-top: 1px; }
-  .freq-high { color: #5dade2; }
-  .freq-mid { color: #a0a8b0; }
-  .freq-low { color: var(--muted); }
+.panel-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--accent);
+}
 
-  /* Hero position rows */
-  .position-row { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; margin-bottom: 10px; transition: opacity 0.2s; }
-  .position-row:last-child { margin-bottom: 0; }
-  .pos-label { display: flex; align-items: center; gap: 8px; }
+.panel-title.blue { color: var(--blue); }
+.panel-title.silver { color: var(--silver); }
+.dot { width:5px; height:5px; border-radius:50%; background:currentColor; box-shadow:0 0 5px currentColor; flex-shrink:0; }
 
-  .pos-num { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; font-family: 'Share Tech Mono', monospace; flex-shrink: 0; }
-  .allies .pos-num { background: rgba(52,152,219,0.15); color: #5dade2; border: 1px solid rgba(52,152,219,0.35); }
+/* ── Position buttons ── */
+.pos-btns { display:flex; gap:6px; flex-wrap:wrap; }
 
-  .pos-name { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); font-family: 'Share Tech Mono', monospace; white-space: nowrap; }
+.pos-btn {
+  flex:1; min-width:58px;
+  padding:8px 4px;
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:3px;
+  cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  transition:all 0.2s;
+  opacity:0.55;
+}
 
-  .pos-input {
-    width: 100%;
-    background: var(--panel2);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    color: var(--text);
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px; font-weight: 600;
-    padding: 8px 12px;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
+.pos-btn.selected { border-color:var(--accent); background:rgba(200,16,46,0.1); box-shadow:0 0 10px rgba(200,16,46,0.2); opacity:1; }
+.pos-btn .pn { font-family:'Share Tech Mono',monospace; font-size:9px; color:var(--muted); }
+.pos-btn.selected .pn { color:var(--accent-bright); }
+.pos-btn .pr { font-family:'Rajdhani',sans-serif; font-size:12px; font-weight:700; color:var(--text); }
+.pos-btn.selected .pr { color:var(--silver-bright); }
+.pos-btn .pf { font-family:'Share Tech Mono',monospace; font-size:8px; color:var(--muted); }
 
-  .pos-input::placeholder { color: var(--muted); font-weight: 400; font-size: 13px; }
-  .allies .pos-input:focus { border-color: #5dade2; box-shadow: 0 0 0 2px rgba(52,152,219,0.1); }
-  .enemies .pos-input:focus { border-color: var(--accent-bright); box-shadow: 0 0 0 2px rgba(200,16,46,0.12); }
+/* ── Position rows ── */
+.pos-row { display:grid; grid-template-columns:90px 1fr; align-items:center; gap:8px; margin-bottom:8px; }
+.pos-row:last-child { margin-bottom:0; }
+.pos-label { display:flex; align-items:center; gap:6px; }
 
-  /* Last pick slot styling */
-  .position-row.is-lastpick .pos-num {
-    background: rgba(200,16,46,0.2);
-    color: var(--accent-bright);
-    border-color: rgba(200,16,46,0.5);
-    box-shadow: 0 0 8px rgba(200,16,46,0.35);
-  }
+.pos-num {
+  width:22px; height:22px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700;
+  font-family:'Share Tech Mono',monospace; flex-shrink:0;
+  background:rgba(200,16,46,0.15); color:var(--accent-bright);
+  border:1px solid rgba(200,16,46,0.3);
+}
 
-  .position-row.is-lastpick .pos-name { color: var(--accent-bright); }
+.pos-num.blue { background:rgba(93,173,226,0.15); color:var(--blue); border-color:rgba(93,173,226,0.3); }
 
-  .lastpick-slot {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(200,16,46,0.06);
-    border: 1px dashed rgba(200,16,46,0.4);
-    border-radius: 3px;
-    padding: 8px 12px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 2px;
-    color: var(--accent-bright);
-    text-transform: uppercase;
-  }
+.pos-name { font-size:10px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--muted); font-family:'Share Tech Mono',monospace; white-space:nowrap; }
 
-  .lastpick-pulse {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--accent-bright);
-    box-shadow: 0 0 6px var(--accent);
-    animation: pulse-dot 1.4s ease-in-out infinite;
-    flex-shrink: 0;
-  }
+/* ── Inputs ── */
+.pos-input, .field-input, .field-select {
+  width:100%;
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:3px;
+  color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  font-size:14px; font-weight:600;
+  padding:8px 10px;
+  outline:none;
+  transition:border-color 0.2s;
+}
 
-  @keyframes pulse-dot { 0%,100%{opacity:0.3; transform:scale(0.8)} 50%{opacity:1; transform:scale(1.1)} }
+.pos-input::placeholder, .field-input::placeholder { color:var(--muted); font-weight:400; font-size:12px; }
+.pos-input:focus { border-color:var(--accent); box-shadow:0 0 0 2px rgba(200,16,46,0.08); }
+.pos-input.blue-focus:focus { border-color:var(--blue); box-shadow:0 0 0 2px rgba(93,173,226,0.08); }
+.field-select:focus, .field-input:focus { border-color:var(--accent); }
+.field-select option { background:#141414; }
 
-  /* Enemy rows */
-  .enemies .pos-num { background: rgba(200,16,46,0.18); color: var(--accent-bright); border: 1px solid rgba(200,16,46,0.4); }
+/* Last pick slot */
+.lp-slot {
+  display:flex; align-items:center; gap:8px;
+  background:rgba(200,16,46,0.06);
+  border:1px dashed rgba(200,16,46,0.4);
+  border-radius:3px;
+  padding:8px 10px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px; letter-spacing:2px;
+  color:var(--accent-bright); text-transform:uppercase;
+}
 
-  /* Settings */
-  .field-group label { display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; font-family: 'Share Tech Mono', monospace; }
+.lp-pulse {
+  width:6px; height:6px; border-radius:50%;
+  background:var(--accent-bright);
+  box-shadow:0 0 6px var(--accent);
+  animation:pulse-dot 1.4s ease-in-out infinite;
+  flex-shrink:0;
+}
 
-  .field-group select, .field-group input[type="password"] {
-    width: 100%;
-    background: var(--panel2);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    color: var(--text);
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 15px; font-weight: 600;
-    padding: 8px 12px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
+@keyframes pulse-dot { 0%,100%{opacity:0.3;transform:scale(0.8)} 50%{opacity:1;transform:scale(1.1)} }
 
-  .field-group input[type="password"] { font-family: 'Share Tech Mono', monospace; font-size: 13px; }
-  .field-group select:focus, .field-group input[type="password"]:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(200,16,46,0.1); }
-  .field-group select option { background: #141920; }
+/* ── Autocomplete ── */
+.ac-wrap { position:relative; width:100%; }
+.ac-dropdown {
+  position:absolute; top:calc(100% + 2px); left:0; right:0;
+  background:#1a2030; border:1px solid var(--accent);
+  border-radius:4px; z-index:999;
+  max-height:180px; overflow-y:auto;
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);
+  display:none;
+}
+.ac-dropdown.open { display:block; }
+.ac-item {
+  padding:7px 10px; font-family:'Rajdhani',sans-serif;
+  font-size:13px; font-weight:600; color:var(--text);
+  cursor:pointer; display:flex; align-items:center; gap:7px;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  transition:background 0.1s;
+}
+.ac-item:last-child { border-bottom:none; }
+.ac-item:hover, .ac-item.active { background:rgba(200,16,46,0.12); color:var(--silver-bright); }
+.ac-initial {
+  width:20px; height:20px; border-radius:2px;
+  background:rgba(200,16,46,0.15); border:1px solid rgba(200,16,46,0.3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:700; color:var(--accent-bright);
+  font-family:'Share Tech Mono',monospace; flex-shrink:0;
+}
+.ac-item mark { background:none; color:var(--accent-bright); font-weight:800; }
+.ac-dropdown::-webkit-scrollbar { width:3px; }
+.ac-dropdown::-webkit-scrollbar-thumb { background:rgba(200,16,46,0.4); border-radius:2px; }
 
-  /* Button */
-  .btn-analyze {
-    width: 100%; padding: 15px;
-    background: linear-gradient(135deg, #7b0a1c 0%, #c8102e 35%, #ff2d4e 55%, #c8102e 75%, #7b0a1c 100%);
-    background-size: 200% 100%;
-    border: none; border-radius: 3px;
-    font-family: 'Cinzel Decorative', serif;
-    font-size: 13px; font-weight: 700; letter-spacing: 3px; color: #fff0f2;
-    cursor: pointer; text-transform: uppercase;
-    transition: background-position 0.4s, transform 0.15s, box-shadow 0.2s;
-    box-shadow: 0 0 20px rgba(200,16,46,0.25), 0 2px 0 rgba(0,0,0,0.4);
-    margin-bottom: 16px;
-    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-  }
+/* ── Buttons ── */
+.btn-main {
+  width:100%; padding:14px;
+  background:linear-gradient(135deg,#7b0a1c 0%,#c8102e 35%,#ff2d4e 55%,#c8102e 75%,#7b0a1c 100%);
+  background-size:200% 100%;
+  border:none; border-radius:3px;
+  font-family:'Cinzel Decorative',serif;
+  font-size:12px; font-weight:700; letter-spacing:2px;
+  color:#fff0f2; cursor:pointer; text-transform:uppercase;
+  transition:background-position 0.4s, transform 0.15s, box-shadow 0.2s;
+  box-shadow:0 0 20px rgba(200,16,46,0.2);
+  margin-bottom:14px;
+  clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+}
+.btn-main:hover:not(:disabled) { background-position:100% 0; box-shadow:0 0 30px rgba(200,16,46,0.4); transform:translateY(-1px); }
+.btn-main:disabled { opacity:0.4; cursor:not-allowed; }
 
-  .btn-analyze:hover:not(:disabled) { background-position: 100% 0; box-shadow: 0 0 35px rgba(200,16,46,0.5), 0 2px 0 rgba(0,0,0,0.4); transform: translateY(-1px); }
-  .btn-analyze:active:not(:disabled) { transform: translateY(0); }
-  .btn-analyze:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-secondary {
+  width:100%; padding:11px;
+  background:var(--panel2); border:1px solid var(--border2);
+  border-radius:3px; font-family:'Rajdhani',sans-serif;
+  font-size:13px; font-weight:700; letter-spacing:2px;
+  color:var(--text); cursor:pointer; text-transform:uppercase;
+  transition:all 0.2s; margin-bottom:10px;
+}
+.btn-secondary:hover { border-color:var(--accent); color:var(--accent-bright); }
 
-  /* Loading */
-  .loading { display: none; text-align: center; padding: 36px 20px; }
-  .loading.active { display: block; }
+/* ── Loading ── */
+.loading { display:none; text-align:center; padding:30px 20px; }
+.loading.active { display:block; }
+.loading-orb {
+  width:44px; height:44px; border-radius:50%;
+  border:2px solid transparent;
+  border-top-color:var(--accent-bright);
+  border-right-color:rgba(200,16,46,0.2);
+  animation:spin 1s linear infinite;
+  margin:0 auto 12px; position:relative;
+}
+.loading-orb::after {
+  content:'⚔'; position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; animation:counter-spin 1s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes counter-spin { to{transform:rotate(-360deg)} }
+.loading-text { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--accent-bright); letter-spacing:2px; animation:pulse 1.5s ease-in-out infinite; }
+.loading-step { margin-top:8px; font-size:10px; color:var(--muted); font-family:'Share Tech Mono',monospace; }
+@keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
 
-  .loading-orb { width: 50px; height: 50px; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--accent-bright); border-right-color: rgba(200,16,46,0.25); animation: spin 1s linear infinite; margin: 0 auto 14px; position: relative; }
-  .loading-orb::after { content: '⚔'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; animation: counter-spin 1s linear infinite; }
+/* ── Error ── */
+.error { display:none; }
+.error.active {
+  display:block; padding:10px 14px;
+  background:rgba(200,16,46,0.07); border:1px solid rgba(200,16,46,0.25);
+  border-radius:4px; color:var(--accent-bright);
+  font-size:12px; margin-bottom:12px;
+  font-family:'Share Tech Mono',monospace;
+}
 
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes counter-spin { to { transform: rotate(-360deg); } }
+/* ── Result cards ── */
+.result { display:none; }
+.result.active { display:block; }
 
-  .loading-text { font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--accent-bright); letter-spacing: 2px; animation: pulse 1.5s ease-in-out infinite; }
-  .loading-step { margin-top: 10px; font-size: 11px; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
-  @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+.result-header {
+  display:flex; align-items:center; gap:8px;
+  margin-bottom:14px; padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+.result-badge {
+  font-family:'Cinzel Decorative',serif; font-size:8px; letter-spacing:2px;
+  padding:3px 8px; background:rgba(200,16,46,0.1);
+  border:1px solid rgba(200,16,46,0.25); border-radius:2px; color:var(--accent);
+}
+.result-label { font-size:9px; letter-spacing:3px; color:var(--muted); text-transform:uppercase; font-family:'Share Tech Mono',monospace; }
 
-  /* Error */
-  .error { display: none; }
-  .error.active { display: block; padding: 12px 16px; background: rgba(231,76,60,0.07); border: 1px solid rgba(231,76,60,0.25); border-radius: 4px; color: var(--red); font-size: 13px; margin-bottom: 14px; font-family: 'Share Tech Mono', monospace; }
+.pick-card {
+  background:var(--panel2); border:1px solid var(--border);
+  border-radius:4px; padding:12px 14px; margin-bottom:8px;
+  position:relative; overflow:hidden;
+}
+.pick-card.top { border-color:rgba(200,16,46,0.4); background:rgba(200,16,46,0.04); }
+.pick-card.top::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.pick-card.alt::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--muted); }
 
-  /* Result */
-  .result { display: none; }
-  .result.active { display: block; }
+.pick-rank { font-size:8px; font-weight:700; letter-spacing:3px; text-transform:uppercase; font-family:'Share Tech Mono',monospace; margin-bottom:3px; }
+.top .pick-rank { color:var(--accent-bright); }
+.alt .pick-rank { color:var(--muted); }
+.pick-hero { font-family:'Cinzel Decorative',serif; font-size:16px; font-weight:700; color:var(--silver); margin-bottom:6px; }
+.top .pick-hero { color:var(--silver-bright); }
+.pick-tags { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; }
+.tag { font-size:9px; font-weight:600; letter-spacing:1px; padding:2px 7px; border-radius:2px; font-family:'Share Tech Mono',monospace; text-transform:uppercase; }
+.tag.meta { background:rgba(200,16,46,0.1); color:var(--accent-bright); border:1px solid rgba(200,16,46,0.2); }
+.tag.synergy { background:rgba(93,173,226,0.1); color:var(--blue); border:1px solid rgba(93,173,226,0.2); }
+.tag.counter { background:rgba(39,174,96,0.1); color:#2ecc71; border:1px solid rgba(39,174,96,0.2); }
+.pick-reason { font-size:13px; line-height:1.6; color:var(--text); }
 
-  .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-  .result-badge { font-family: 'Cinzel Decorative', serif; font-size: 9px; letter-spacing: 2px; padding: 3px 9px; background: rgba(200,16,46,0.1); border: 1px solid rgba(200,16,46,0.3); border-radius: 2px; color: var(--accent-bright); }
-  .result-label { font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; font-family: 'Share Tech Mono', monospace; }
+.threat-note { background:rgba(200,16,46,0.05); border:1px solid rgba(200,16,46,0.15); border-radius:4px; padding:10px 12px; margin-top:4px; }
+.threat-title { font-size:8px; letter-spacing:3px; text-transform:uppercase; color:var(--accent); font-family:'Share Tech Mono',monospace; margin-bottom:5px; }
+.threat-note p { font-size:12px; line-height:1.6; }
 
-  .pick-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; padding: 14px 16px; margin-bottom: 10px; position: relative; overflow: hidden; }
-  .pick-card.top-pick { border-color: rgba(200,16,46,0.4); background: rgba(200,16,46,0.04); }
-  .pick-card.top-pick::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
-  .pick-card.alt-pick::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--muted); }
+/* ── Generic result box ── */
+.result-box {
+  background:var(--panel2); border:1px solid var(--border);
+  border-radius:4px; padding:14px; font-size:13px;
+  line-height:1.75; color:var(--text); white-space:pre-wrap;
+}
 
-  .pick-rank { font-size: 9px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; font-family: 'Share Tech Mono', monospace; margin-bottom: 4px; }
-  .top-pick .pick-rank { color: var(--accent-bright); }
-  .alt-pick .pick-rank { color: var(--muted); }
+/* ── Tier list ── */
+.tier-pos { margin-bottom:14px; }
+.tier-pos-name { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--silver); margin-bottom:6px; }
+.tier-row { display:flex; align-items:flex-start; gap:8px; margin-bottom:4px; }
+.tier-label { font-family:'Share Tech Mono',monospace; font-size:10px; font-weight:700; width:28px; flex-shrink:0; padding-top:2px; }
+.tier-label.s { color:#ff2d4e; }
+.tier-label.a { color:#f39c12; }
+.tier-heroes { display:flex; flex-wrap:wrap; gap:4px; }
+.hero-chip {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:2px; padding:2px 8px;
+  font-size:11px; font-weight:600; color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+}
 
-  .pick-hero { font-family: 'Cinzel Decorative', serif; font-size: 18px; font-weight: 700; color: var(--silver); margin-bottom: 8px; }
-  .top-pick .pick-hero { color: var(--silver-bright); }
+/* ── Item build ── */
+.item-section { margin-bottom:12px; }
+.item-section-title { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.item-list { display:flex; flex-wrap:wrap; gap:5px; }
+.item-chip {
+  background:var(--panel); border:1px solid rgba(200,16,46,0.2);
+  border-radius:2px; padding:4px 10px;
+  font-size:12px; font-weight:600; color:var(--silver);
+  font-family:'Rajdhani',sans-serif;
+}
+.item-arrow { color:var(--muted); align-self:center; font-size:10px; }
 
-  .pick-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .tag { font-size: 10px; font-weight: 600; letter-spacing: 1px; padding: 2px 8px; border-radius: 2px; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; }
-  .tag.synergy { background: rgba(52,152,219,0.1); color: #5dade2; border: 1px solid rgba(52,152,219,0.2); }
-  .tag.counter { background: rgba(200,16,46,0.10); color: var(--accent-bright); border: 1px solid rgba(200,16,46,0.25); }
-  .tag.meta { background: rgba(180,180,180,0.08); color: #909aa4; border: 1px solid rgba(180,180,180,0.15); }
+/* ── Counter list ── */
+.counter-section { margin-bottom:14px; }
+.counter-title { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; margin-bottom:8px; }
+.counter-title.hard { color:#ff2d4e; }
+.counter-title.soft { color:#f39c12; }
+.counter-item { display:flex; align-items:flex-start; gap:8px; margin-bottom:6px; padding:8px 10px; background:var(--panel); border:1px solid var(--border); border-radius:3px; }
+.counter-hero { font-family:'Cinzel Decorative',serif; font-size:12px; color:var(--silver-bright); flex-shrink:0; min-width:100px; }
+.counter-reason { font-size:12px; line-height:1.5; color:var(--muted); }
 
-  .pick-reason { font-size: 14px; line-height: 1.65; color: var(--text); }
+/* ── Guide ── */
+.guide-role { font-size:13px; color:var(--silver); margin-bottom:10px; }
+.guide-role span { color:var(--accent-bright); font-weight:700; }
+.guide-section { margin-bottom:12px; }
+.guide-section-title { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+.guide-text { font-size:13px; line-height:1.65; }
+.guide-list { list-style:none; }
+.guide-list li { font-size:13px; padding:3px 0; display:flex; gap:8px; }
+.guide-list li::before { content:'▸'; color:var(--accent); flex-shrink:0; }
+.guide-list li.neg::before { content:'▸'; color:var(--muted); }
 
-  .threat-note { background: rgba(231,76,60,0.05); border: 1px solid rgba(231,76,60,0.15); border-radius: 4px; padding: 12px 14px; margin-top: 4px; }
-  .threat-note-title { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--red); font-family: 'Share Tech Mono', monospace; margin-bottom: 6px; }
-  .threat-note p { font-size: 13px; line-height: 1.6; color: #c8cdd8; }
+/* ── API key note ── */
+.api-note { font-size:10px; color:var(--muted); font-family:'Share Tech Mono',monospace; margin-bottom:12px; text-align:center; }
 
-  .result-raw { font-size: 14px; line-height: 1.75; color: var(--text); white-space: pre-wrap; }
-
-  footer { text-align: center; padding-top: 28px; font-size: 10px; color: var(--muted); letter-spacing: 2px; font-family: 'Share Tech Mono', monospace; }
-  footer em { color: rgba(200,16,46,0.6); font-style: normal; }
-
-  /* Autocomplete */
-  .autocomplete-wrap { position: relative; width: 100%; }
-  .autocomplete-dropdown {
-    position: absolute;
-    top: calc(100% + 3px);
-    left: 0; right: 0;
-    background: #1a2030;
-    border: 1px solid var(--accent);
-    border-radius: 4px;
-    z-index: 999;
-    max-height: 200px;
-    overflow-y: auto;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 12px rgba(201,168,76,0.1);
-    display: none;
-  }
-  .autocomplete-dropdown.open { display: block; }
-  .autocomplete-item {
-    padding: 8px 12px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 14px; font-weight: 600;
-    color: var(--text);
-    cursor: pointer;
-    display: flex; align-items: center; gap: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    transition: background 0.1s;
-  }
-  .autocomplete-item:last-child { border-bottom: none; }
-  .autocomplete-item:hover, .autocomplete-item.active {
-    background: rgba(200,16,46,0.12);
-    color: var(--silver-bright);
-  }
-  .autocomplete-item .hero-initial {
-    width: 22px; height: 22px; border-radius: 2px;
-    background: rgba(200,16,46,0.15); border: 1px solid rgba(200,16,46,0.3);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 700; color: var(--accent-bright); flex-shrink: 0;
-    font-family: 'Share Tech Mono', monospace;
-  }
-  .autocomplete-item mark { background: none; color: var(--accent-bright); font-weight: 800; }
-  .autocomplete-dropdown::-webkit-scrollbar { width: 4px; }
-  .autocomplete-dropdown::-webkit-scrollbar-thumb { background: rgba(200,16,46,0.4); border-radius: 2px; }
-
-  /* Language switcher */
-  .lang-switcher {
-    position: absolute;
-    top: 20px;
-    right: 16px;
-    display: flex;
-    border: 1px solid var(--border2);
-    border-radius: 3px;
-    overflow: hidden;
-  }
-
-  .lang-btn {
-    padding: 5px 11px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    background: var(--panel2);
-    color: var(--muted);
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .lang-btn:first-child { border-right: 1px solid var(--border2); }
-
-  .lang-btn.active {
-    background: var(--accent);
-    color: #fff;
-  }
-
-  .lang-btn:hover:not(.active) {
-    background: rgba(200,16,46,0.1);
-    color: var(--text);
-  }
+/* ── Footer ── */
+footer { text-align:center; padding:20px 0 10px; font-size:9px; color:var(--muted); letter-spacing:2px; font-family:'Share Tech Mono',monospace; }
+footer em { color:rgba(200,16,46,0.5); font-style:normal; }
 </style>
 </head>
 <body>
+
+<div class="top-bar">
+  <div class="logo">⚔ Oracle</div>
+  <div class="lang-sw">
+    <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+    <button id="btn-ru" onclick="setLang('ru')">RU</button>
+  </div>
+</div>
+
+<div class="tab-nav" id="tab-nav"></div>
+
 <div class="container">
 
-  <div style="position:relative">
-  <div class="lang-switcher">
-    <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
-    <button class="lang-btn" id="btn-ru" onclick="setLang('ru')">RU</button>
-  </div>
-  <header>
-    <div class="logo-line">
-      <div class="logo-ornament"></div>
-      <span style="font-size:24px;filter:drop-shadow(0 0 12px rgba(200,16,46,0.8))">⚔️</span>
-      <div class="logo-ornament right"></div>
+  <!-- DRAFT TAB -->
+  <div class="tab-content active" id="tab-draft">
+    <div class="panel">
+      <div class="panel-title"><div class="dot"></div><span data-i18n="whoLastPick">Who Is Last Picking?</span></div>
+      <div class="pos-btns" id="pos-btns"></div>
     </div>
-    <h1 data-i18n="title">Last Pick Oracle</h1>
-    <p class="subtitle" data-i18n="subtitle">Dota 2 Draft Analyzer · AI Powered</p>
-  </header>
-  </div>
 
-  <!-- Who is last picking -->
-  <div class="panel">
-    <div class="panel-title gold"><div class="dot"></div> <span data-i18n="whoLastPick">Who Is Last Picking?</span></div>
-    <div class="lastpick-btns">
-      <button class="lp-btn likely selected" data-pos="1" onclick="setLastPick(1)">
-        <span class="lp-pos">Pos 1</span>
-        <span class="lp-role">Carry</span>
-        <span class="lp-freq freq-high" data-i18n="mostCommon">Most common</span>
-      </button>
-      <button class="lp-btn likely" data-pos="2" onclick="setLastPick(2)">
-        <span class="lp-pos">Pos 2</span>
-        <span class="lp-role">Mid</span>
-        <span class="lp-freq freq-high" data-i18n="veryCommon">Very common</span>
-      </button>
-      <button class="lp-btn" data-pos="3" onclick="setLastPick(3)">
-        <span class="lp-pos">Pos 3</span>
-        <span class="lp-role" data-i18n="offLane">Off Lane</span>
-        <span class="lp-freq freq-mid" data-i18n="rare">Rare</span>
-      </button>
-      <button class="lp-btn" data-pos="4" onclick="setLastPick(4)">
-        <span class="lp-pos">Pos 4</span>
-        <span class="lp-role" data-i18n="support">Support</span>
-        <span class="lp-freq freq-low" data-i18n="veryRare">Very rare</span>
-      </button>
-      <button class="lp-btn" data-pos="5" onclick="setLastPick(5)">
-        <span class="lp-pos">Pos 5</span>
-        <span class="lp-role" data-i18n="hardSupp">Hard Supp</span>
-        <span class="lp-freq freq-low" data-i18n="almostNever">Almost never</span>
-      </button>
+    <div class="panel blue">
+      <div class="panel-title blue"><div class="dot"></div><span data-i18n="yourTeam">Your Team — 4 Picked Heroes</span></div>
+      <div id="ally-rows"></div>
     </div>
-  </div>
 
-  <!-- Allied Team -->
-  <div class="panel allies">
-    <div class="panel-title allies"><div class="dot"></div> <span data-i18n="yourTeam">Your Team — Fill the 4 Already Picked</span></div>
-    <div class="position-row" id="ally-row-1">
-      <div class="pos-label"><div class="pos-num">1</div><div class="pos-name">Carry</div></div>
-      <div class="lastpick-slot"><div class="lastpick-pulse"></div><span data-i18n="lastPickSlot">Last Pick Slot</span></div>
+    <div class="panel">
+      <div class="panel-title"><div class="dot"></div><span data-i18n="enemyTeam">Enemy Team — 4 Known Heroes</span></div>
+      <div id="enemy-rows"></div>
+      <div class="pos-row" style="margin-top:8px">
+        <div class="pos-label">
+          <div class="pos-num" style="background:rgba(200,16,46,0.08);border-style:dashed;opacity:0.7;font-size:9px">?</div>
+          <div class="pos-name" data-i18n="expected">Expected</div>
+        </div>
+        <input class="pos-input" id="enemy-exp" type="text" autocomplete="off">
+      </div>
     </div>
-    <div class="position-row" id="ally-row-2">
-      <div class="pos-label"><div class="pos-num">2</div><div class="pos-name">Mid</div></div>
-      <input class="pos-input" id="ally-2" type="text" placeholder="e.g. Lina" autocomplete="off">
+
+    <div class="panel">
+      <div class="panel-title silver"><div class="dot"></div><span data-i18n="matchSettings">Match Settings</span></div>
+      <div style="margin-bottom:10px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-family:'Share Tech Mono',monospace" data-i18n="skillBracket">Skill Bracket</div>
+        <select class="field-select" id="bracket"></select>
+      </div>
     </div>
-    <div class="position-row" id="ally-row-3">
-      <div class="pos-label"><div class="pos-num">3</div><div class="pos-name">Off Lane</div></div>
-      <input class="pos-input" id="ally-3" type="text" placeholder="e.g. Axe" autocomplete="off">
+
+    <div class="error" id="draft-error"></div>
+    <button class="btn-main" id="draft-btn" onclick="runDraft()"><span data-i18n="analyzeBtn">⚔ Consult the Oracle ⚔</span></button>
+
+    <div class="loading" id="draft-loading">
+      <div class="loading-orb"></div>
+      <div class="loading-text" data-i18n="analyzing">ANALYZING DRAFT</div>
+      <div class="loading-step" id="draft-step"></div>
     </div>
-    <div class="position-row" id="ally-row-4">
-      <div class="pos-label"><div class="pos-num">4</div><div class="pos-name">Support</div></div>
-      <input class="pos-input" id="ally-4" type="text" placeholder="e.g. Earth Spirit" autocomplete="off">
-    </div>
-    <div class="position-row" id="ally-row-5">
-      <div class="pos-label"><div class="pos-num">5</div><div class="pos-name">Hard Supp</div></div>
-      <input class="pos-input" id="ally-5" type="text" placeholder="e.g. Crystal Maiden" autocomplete="off">
+
+    <div class="panel result" id="draft-result">
+      <div class="result-header">
+        <div class="result-badge" data-i18n="oracle">Oracle</div>
+        <div class="result-label" data-i18n="recommendation">Last Pick Recommendation</div>
+      </div>
+      <div id="draft-result-content"></div>
     </div>
   </div>
 
-  <!-- Enemy Team -->
-  <div class="panel enemies">
-    <div class="panel-title enemies"><div class="dot"></div> <span data-i18n="enemyTeam">Enemy Team — 4 Known Heroes</span></div>
-    <div class="position-row">
-      <div class="pos-label"><div class="pos-num enemy-num">1</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
-      <input class="pos-input" id="enemy-1" type="text" placeholder="e.g. Phantom Assassin" autocomplete="off">
+  <!-- TIER LIST TAB -->
+  <div class="tab-content" id="tab-tiers">
+    <div class="panel">
+      <div class="panel-title silver"><div class="dot"></div><span data-i18n="tierlistTitle">Tier List Settings</span></div>
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-family:'Share Tech Mono',monospace" data-i18n="skillBracket">Skill Bracket</div>
+      <select class="field-select" id="tier-bracket" style="margin-bottom:12px"></select>
     </div>
-    <div class="position-row">
-      <div class="pos-label"><div class="pos-num enemy-num">2</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
-      <input class="pos-input" id="enemy-2" type="text" placeholder="e.g. Invoker" autocomplete="off">
+    <div class="error" id="tier-error"></div>
+    <button class="btn-main" onclick="runTierlist()"><span data-i18n="tierlistBtn">📊 Get Tier List</span></button>
+    <div class="loading" id="tier-loading">
+      <div class="loading-orb"></div>
+      <div class="loading-text" data-i18n="loading">LOADING...</div>
+      <div class="loading-step" data-i18n="tierlistLoading">Fetching ProTracker & DotaBuff data...</div>
     </div>
-    <div class="position-row">
-      <div class="pos-label"><div class="pos-num enemy-num">3</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
-      <input class="pos-input" id="enemy-3" type="text" placeholder="e.g. Tidehunter" autocomplete="off">
-    </div>
-    <div class="position-row">
-      <div class="pos-label"><div class="pos-num enemy-num">4</div><div class="pos-name enemy-label" data-i18n-enemy="enemyHero">Enemy Hero</div></div>
-      <input class="pos-input" id="enemy-4" type="text" placeholder="e.g. Lion" autocomplete="off">
-    </div>
-    <div class="position-row" id="enemy-row-5">
-      <div class="pos-label"><div class="pos-num" style="background:rgba(200,16,46,0.08);border-style:dashed;opacity:0.7">?</div><div class="pos-name" style="color:var(--muted)" data-i18n="expectedPick">Expected</div></div>
-      <input class="pos-input" id="enemy-5" type="text" placeholder="Their expected last pick (optional)" autocomplete="off" style="border-style:dashed;opacity:0.75">
+    <div class="panel result" id="tier-result">
+      <div class="result-header">
+        <div class="result-badge" data-i18n="oracle">Oracle</div>
+        <div class="result-label" data-i18n="tierlistResult">Patch Tier List</div>
+      </div>
+      <div id="tier-result-content"></div>
     </div>
   </div>
 
-  <!-- Settings -->
-  <div class="panel">
-    <div class="panel-title gold"><div class="dot"></div> <span data-i18n="matchSettings">Match Settings</span></div>
-    <div class="field-group">
-      <label data-i18n="skillBracket">Skill Bracket</label>
-      <select id="bracket">
-        <option>Immortal / Pro</option>
-        <option>Divine</option>
-        <option>Ancient</option>
-        <option>Legend</option>
-        <option>Archon</option>
-        <option>Crusader</option>
-        <option>Guardian</option>
-        <option>Herald</option>
-      </select>
+  <!-- ITEM BUILD TAB -->
+  <div class="tab-content" id="tab-build">
+    <div class="panel">
+      <div class="panel-title silver"><div class="dot"></div><span data-i18n="itemBuildTitle">Hero Item Build</span></div>
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-family:'Share Tech Mono',monospace" data-i18n="heroName">Hero Name</div>
+      <div class="ac-wrap" style="margin-bottom:10px">
+        <input class="pos-input" id="build-hero" type="text" autocomplete="off">
+        <div class="ac-dropdown" id="build-hero-ac"></div>
+      </div>
+    </div>
+    <div class="error" id="build-error"></div>
+    <button class="btn-main" onclick="runBuild()"><span data-i18n="buildBtn">🛒 Get Item Build</span></button>
+    <div class="loading" id="build-loading">
+      <div class="loading-orb"></div>
+      <div class="loading-text" data-i18n="loading">LOADING...</div>
+      <div class="loading-step" data-i18n="buildLoading">Building item guide...</div>
+    </div>
+    <div class="panel result" id="build-result">
+      <div class="result-header">
+        <div class="result-badge" data-i18n="oracle">Oracle</div>
+        <div class="result-label" data-i18n="buildResult">Item Build</div>
+      </div>
+      <div id="build-result-content"></div>
     </div>
   </div>
 
-  <!-- API Key -->
-  <div class="panel">
-    <div class="panel-title gold"><div class="dot"></div> Anthropic API Key</div>
-    <div class="field-group">
-      <label data-i18n="apiKeyLabel">Your key stays in your browser only</label>
-      <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+  <!-- COUNTER TAB -->
+  <div class="tab-content" id="tab-counter">
+    <div class="panel">
+      <div class="panel-title silver"><div class="dot"></div><span data-i18n="counterTitle">Counter Pick Finder</span></div>
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-family:'Share Tech Mono',monospace" data-i18n="heroName">Hero Name</div>
+      <div class="ac-wrap" style="margin-bottom:10px">
+        <input class="pos-input" id="counter-hero" type="text" autocomplete="off">
+        <div class="ac-dropdown" id="counter-hero-ac"></div>
+      </div>
+    </div>
+    <div class="error" id="counter-error"></div>
+    <button class="btn-main" onclick="runCounter()"><span data-i18n="counterBtn">🔄 Find Counters</span></button>
+    <div class="loading" id="counter-loading">
+      <div class="loading-orb"></div>
+      <div class="loading-text" data-i18n="loading">LOADING...</div>
+      <div class="loading-step" data-i18n="counterLoading">Analyzing counter picks...</div>
+    </div>
+    <div class="panel result" id="counter-result">
+      <div class="result-header">
+        <div class="result-badge" data-i18n="oracle">Oracle</div>
+        <div class="result-label" data-i18n="counterResult">Counter Picks</div>
+      </div>
+      <div id="counter-result-content"></div>
     </div>
   </div>
 
-  <div class="error" id="error-box"></div>
-
-  <button class="btn-analyze" id="analyze-btn" onclick="analyze()"><span data-i18n="analyzeBtn">⚔ &nbsp;Consult the Oracle&nbsp; ⚔</span></button>
-
-  <div class="loading" id="loading">
-    <div class="loading-orb"></div>
-    <div class="loading-text" data-i18n="analyzing">ANALYZING DRAFT</div>
-    <div class="loading-step" id="loading-step">Evaluating hero matchups...</div>
-  </div>
-
-  <div class="panel result" id="result-panel">
-    <div class="result-header">
-      <div class="result-badge" data-i18n="oracle">Oracle</div>
-      <div class="result-label" data-i18n="recommendation">Last Pick Recommendation</div>
+  <!-- GUIDE TAB -->
+  <div class="tab-content" id="tab-guide">
+    <div class="panel">
+      <div class="panel-title silver"><div class="dot"></div><span data-i18n="guideTitle">Hero Guide</span></div>
+      <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-family:'Share Tech Mono',monospace" data-i18n="heroName">Hero Name</div>
+      <div class="ac-wrap" style="margin-bottom:10px">
+        <input class="pos-input" id="guide-hero" type="text" autocomplete="off">
+        <div class="ac-dropdown" id="guide-hero-ac"></div>
+      </div>
     </div>
-    <div id="result-content"></div>
+    <div class="error" id="guide-error"></div>
+    <button class="btn-main" onclick="runGuide()"><span data-i18n="guideBtn">📚 Get Hero Guide</span></button>
+    <div class="loading" id="guide-loading">
+      <div class="loading-orb"></div>
+      <div class="loading-text" data-i18n="loading">LOADING...</div>
+      <div class="loading-step" data-i18n="guideLoading">Loading hero guide...</div>
+    </div>
+    <div class="panel result" id="guide-result">
+      <div class="result-header">
+        <div class="result-badge" data-i18n="oracle">Oracle</div>
+        <div class="result-label" data-i18n="guideResult">Hero Guide</div>
+      </div>
+      <div id="guide-result-content"></div>
+    </div>
   </div>
 
-  <footer>
-    <em>⚔</em> &nbsp;Last Pick Oracle · Dota 2 Draft Tool&nbsp; <em>⚔</em><br><br>
-    <span data-i18n="footerText">Analysis based on DotaBuff · Liquipedia · ProTracker meta</span>
-  </footer>
+  <!-- PATCH TAB -->
+  <div class="tab-content" id="tab-patch">
+    <div class="error" id="patch-error"></div>
+    <button class="btn-main" onclick="runPatch()"><span data-i18n="patchBtn">📋 Get Patch Summary</span></button>
+    <div class="loading" id="patch-loading">
+      <div class="loading-orb"></div>
+      <div class="loading-text" data-i18n="loading">LOADING...</div>
+      <div class="loading-step" data-i18n="patchLoading">Fetching patch notes...</div>
+    </div>
+    <div class="panel result" id="patch-result">
+      <div class="result-header">
+        <div class="result-badge" data-i18n="oracle">Oracle</div>
+        <div class="result-label" data-i18n="patchResult">Patch Summary</div>
+      </div>
+      <div id="patch-result-content"></div>
+    </div>
+  </div>
 
+  <footer><em>⚔</em> &nbsp;Dota 2 Oracle · AI Powered · Patch 7.41c&nbsp; <em>⚔</em></footer>
 </div>
 
 <script>
-  const posLabels = ['Carry', 'Mid', 'Off Lane', 'Support', 'Hard Support'];
-  const posPlaceholders = ['e.g. Juggernaut', 'e.g. Lina', 'e.g. Axe', 'e.g. Earth Spirit', 'e.g. Crystal Maiden'];
+const PATCH = "7.41c";
+const API_URL = "https://dota2-oracle-bot-production.up.railway.app";
 
-  let currentLastPick = 1; // default: Carry last picks
+const HEROES = ['Abaddon','Alchemist','Ancient Apparition','Anti-Mage','Arc Warden','Axe','Bane','Batrider','Beastmaster','Bloodseeker','Bounty Hunter','Brewmaster','Bristleback','Broodmother','Centaur Warrunner','Chaos Knight','Chen','Clinkz','Clockwerk','Crystal Maiden','Dark Seer','Dark Willow','Dawnbreaker','Dazzle','Death Prophet','Disruptor','Doom','Dragon Knight','Drow Ranger','Earth Spirit','Earthshaker','Elder Titan','Ember Spirit','Enchantress','Enigma','Faceless Void','Grimstroke','Gyrocopter','Hoodwink','Huskar','Invoker','Io','Jakiro','Juggernaut','Keeper of the Light','Kez','Kunkka','Legion Commander','Leshrac','Lich','Lifestealer','Lina','Lion','Lone Druid','Luna','Lycan','Magnus','Marci','Mars','Medusa','Meepo','Mirana','Monkey King','Morphling','Muerta','Naga Siren',"Nature's Prophet",'Necrophos','Night Stalker','Nyx Assassin','Ogre Magi','Omniknight','Oracle','Outworld Destroyer','Pangolier','Phantom Assassin','Phantom Lancer','Phoenix','Primal Beast','Puck','Pudge','Pugna','Queen of Pain','Razor','Riki','Ringmaster','Rubick','Sand King','Shadow Demon','Shadow Fiend','Shadow Shaman','Silencer','Skywrath Mage','Slardar','Slark','Snapfire','Sniper','Spectre','Spirit Breaker','Storm Spirit','Sven','Techies','Templar Assassin','Terrorblade','Tidehunter','Timbersaw','Tinker','Tiny','Treant Protector','Troll Warlord','Tusk','Underlord','Undying','Ursa','Vengeful Spirit','Venomancer','Viper','Visage','Void Spirit','Warlock','Weaver','Windranger','Winter Wyvern','Witch Doctor','Wraith King','Zeus'];
 
-
-  // ── Full Dota 2 Hero Roster ──
-  const HEROES = [
-    'Abaddon','Alchemist','Ancient Apparition','Anti-Mage','Arc Warden',
-    'Axe','Bane','Batrider','Beastmaster','Bloodseeker',
-    'Bounty Hunter','Brewmaster','Bristleback','Broodmother','Centaur Warrunner',
-    'Chaos Knight','Chen','Clinkz','Clockwerk','Crystal Maiden',
-    'Dark Seer','Dark Willow','Dawnbreaker','Dazzle','Death Prophet',
-    'Disruptor','Doom','Dragon Knight','Drow Ranger','Earth Spirit',
-    'Earthshaker','Elder Titan','Ember Spirit','Enchantress','Enigma',
-    'Faceless Void','Grimstroke','Gyrocopter','Hoodwink','Huskar',
-    'Invoker','Io','Jakiro','Juggernaut','Keeper of the Light',
-    'Kez','Kunkka','Legion Commander','Leshrac','Lich',
-    'Lifestealer','Lina','Lion','Lone Druid','Luna',
-    'Lycan','Magnus','Marci','Mars','Medusa',
-    'Meepo','Mirana','Monkey King','Morphling','Muerta',
-    'Naga Siren',"Nature's Prophet",'Necrophos','Night Stalker','Nyx Assassin',
-    'Ogre Magi','Omniknight','Oracle','Outworld Destroyer','Pangolier',
-    'Phantom Assassin','Phantom Lancer','Phoenix','Primal Beast','Puck',
-    'Pudge','Pugna','Queen of Pain','Razor','Riki',
-    'Ringmaster','Rubick','Sand King','Shadow Demon','Shadow Fiend',
-    'Shadow Shaman','Silencer','Skywrath Mage','Slardar','Slark',
-    'Snapfire','Sniper','Spectre','Spirit Breaker','Storm Spirit',
-    'Sven','Techies','Templar Assassin','Terrorblade','Tidehunter',
-    'Timbersaw','Tinker','Tiny','Treant Protector','Troll Warlord',
-    'Tusk','Underlord','Undying','Ursa','Vengeful Spirit',
-    'Venomancer','Viper','Visage','Void Spirit','Warlock',
-    'Weaver','Windranger','Winter Wyvern','Witch Doctor','Wraith King',
-    'Zeus'
-  ];
-
-  function highlightMatch(name, query) {
-    const idx = name.toLowerCase().indexOf(query.toLowerCase());
-    if (idx === -1) return name;
-    return name.slice(0, idx) + '<mark>' + name.slice(idx, idx + query.length) + '</mark>' + name.slice(idx + query.length);
-  }
-
-  function setupAutocomplete(input) {
-    // Wrap input in relative container
-    const wrap = document.createElement('div');
-    wrap.className = 'autocomplete-wrap';
-    input.parentNode.insertBefore(wrap, input);
-    wrap.appendChild(input);
-
-    const dropdown = document.createElement('div');
-    dropdown.className = 'autocomplete-dropdown';
-    wrap.appendChild(dropdown);
-
-    let activeIdx = -1;
-    let currentMatches = [];
-
-    function showDropdown(query) {
-      if (!query || query.length < 1) { dropdown.classList.remove('open'); return; }
-      currentMatches = HEROES.filter(h => h.toLowerCase().includes(query.toLowerCase())).slice(0, 8);
-      if (!currentMatches.length) { dropdown.classList.remove('open'); return; }
-
-      activeIdx = -1;
-      dropdown.innerHTML = currentMatches.map((h, i) => `
-        <div class="autocomplete-item" data-idx="${i}">
-          <span class="hero-initial">${h[0]}</span>
-          ${highlightMatch(h, query)}
-        </div>
-      `).join('');
-
-      dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
-        item.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          input.value = currentMatches[parseInt(item.dataset.idx)];
-          dropdown.classList.remove('open');
-          input.dispatchEvent(new Event('change'));
-        });
-      });
-
-      dropdown.classList.add('open');
-    }
-
-    function setActive(idx) {
-      const items = dropdown.querySelectorAll('.autocomplete-item');
-      items.forEach(i => i.classList.remove('active'));
-      if (idx >= 0 && idx < items.length) {
-        items[idx].classList.add('active');
-        items[idx].scrollIntoView({ block: 'nearest' });
-      }
-    }
-
-    input.addEventListener('input', () => showDropdown(input.value));
-    input.addEventListener('focus', () => { if (input.value) showDropdown(input.value); });
-
-    input.addEventListener('keydown', (e) => {
-      if (!dropdown.classList.contains('open')) return;
-      if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx + 1, currentMatches.length - 1); setActive(activeIdx); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx - 1, 0); setActive(activeIdx); }
-      else if (e.key === 'Enter' || e.key === 'Tab') {
-        if (activeIdx >= 0) { e.preventDefault(); input.value = currentMatches[activeIdx]; dropdown.classList.remove('open'); }
-        else if (currentMatches.length === 1) { e.preventDefault(); input.value = currentMatches[0]; dropdown.classList.remove('open'); }
-      }
-      else if (e.key === 'Escape') { dropdown.classList.remove('open'); }
-    });
-
-    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) dropdown.classList.remove('open'); });
-  }
-
-  function attachAutocompletes() {
-    document.querySelectorAll('.pos-input').forEach(inp => {
-      if (!inp.closest('.autocomplete-wrap')) setupAutocomplete(inp);
-    });
-  }
-
-  function setLastPick(pos) {
-    currentLastPick = pos;
-
-    // Update buttons
-    document.querySelectorAll('.lp-btn').forEach(btn => {
-      btn.classList.toggle('selected', parseInt(btn.dataset.pos) === pos);
-    });
-
-    // Update ally rows: show lastpick slot for selected pos, inputs for others
-    for (let i = 1; i <= 5; i++) {
-      const row = document.getElementById(`ally-row-${i}`);
-      if (!row) continue;
-
-      const posLabel = row.querySelector('.pos-name');
-      const inputCell = row.querySelector('.pos-input') || row.querySelector('.lastpick-slot');
-
-      if (i === pos) {
-        row.classList.add('is-lastpick');
-        // Replace input with lastpick slot if needed
-        if (row.querySelector('.pos-input')) {
-          const inp = row.querySelector('.pos-input');
-          const slot = document.createElement('div');
-          slot.className = 'lastpick-slot';
-          slot.innerHTML = '<div class="lastpick-pulse"></div>Last Pick Slot';
-          inp.replaceWith(slot);
-        }
-      } else {
-        row.classList.remove('is-lastpick');
-        // Replace lastpick slot with input if needed
-        if (row.querySelector('.lastpick-slot')) {
-          const slot = row.querySelector('.lastpick-slot');
-          const inp = document.createElement('input');
-          inp.className = 'pos-input';
-          inp.id = `ally-${i}`;
-          inp.type = 'text';
-          inp.placeholder = posPlaceholders[i - 1];
-          inp.autocomplete = 'off';
-          slot.replaceWith(inp);
-        }
-        // Make sure input has correct id
-        const inp = row.querySelector('.pos-input');
-        if (inp) inp.id = `ally-${i}`;
-      }
-    }
-    // Re-attach autocompletes for any newly created inputs
-    setTimeout(attachAutocompletes, 0);
-  }
-
-  // Init: set carry as last pick
-  setLastPick(1);
-  attachAutocompletes();
-
-  const loadingSteps = [
-    "Evaluating hero matchups...",
-    "Checking ally synergies...",
-    "Scanning counter-pick options...",
-    "Assessing current meta...",
-    "Consulting the Oracle..."
-  ];
-
-
-  // ── Translations ──
-  const TRANSLATIONS = {
-    en: {
-      title: 'Last Pick Oracle',
-      subtitle: 'Dota 2 Draft Analyzer · AI Powered',
-      whoLastPick: 'Who Is Last Picking?',
-      mostCommon: 'Most common',
-      veryCommon: 'Very common',
-      offLane: 'Off Lane',
-      rare: 'Rare',
-      support: 'Support',
-      hardSupp: 'Hard Supp',
-      veryRare: 'Very rare',
-      almostNever: 'Almost never',
-      yourTeam: 'Your Team — Fill the 4 Already Picked',
-      enemyTeam: 'Enemy Team — 4 Known Heroes',
-      expectedPick: 'Expected',
-      expectedPlaceholder: 'Their expected last pick (optional)',
-      matchSettings: 'Match Settings',
-      skillBracket: 'Skill Bracket',
-      apiKeyLabel: 'Your key stays in your browser only',
-      analyzeBtn: '⚔  Consult the Oracle  ⚔',
-      analyzing: 'ANALYZING DRAFT',
-      oracle: 'Oracle',
-      recommendation: 'Last Pick Recommendation',
-      footerText: 'Analysis based on DotaBuff · Liquipedia · ProTracker meta',
-      lastPickSlot: 'Last Pick Slot',
-      carry: 'Carry', mid: 'Mid',
-      posNames: ['Carry', 'Mid', 'Off Lane', 'Support', 'Hard Support'],
-      placeholders: ['e.g. Juggernaut', 'e.g. Lina', 'e.g. Axe', 'e.g. Earth Spirit', 'e.g. Crystal Maiden'],
-      enemyPlaceholders: ['e.g. Phantom Assassin', 'e.g. Invoker', 'e.g. Tidehunter', 'e.g. Lion'],
-      enemyHero: 'Enemy Hero',
-      errApiKey: '⚠ Please enter your Anthropic API key.',
-      errAllies: '⚠ Please enter at least 2 ally heroes (excluding the last pick slot).',
-      errEnemies: '⚠ Please enter at least 2 enemy heroes.',
-      loadingSteps: ['Searching patch 7.41c data...', 'Checking DotaBuff win rates...', 'Scanning current meta...', 'Evaluating synergies & counters...', 'Consulting the Oracle...'],
-      bestPick: '🥇 Best Pick', alt: '🥈 Alternative', safe: '🥉 Safe Option',
-      keyThreat: '⚠ Key Threat',
-      brackets: ['Immortal / Pro', 'Divine', 'Ancient', 'Legend', 'Archon', 'Crusader', 'Guardian', 'Herald'],
-    },
-    ru: {
-      title: 'Last Pick Oracle',
-      subtitle: 'Анализатор Драфта Dota 2 · На базе ИИ',
-      whoLastPick: 'Кто пикует последним?',
-      mostCommon: 'Очень часто',
-      veryCommon: 'Часто',
-      offLane: 'Оффлейн',
-      rare: 'Редко',
-      support: 'Саппорт',
-      hardSupp: 'Хард Сапп',
-      veryRare: 'Очень редко',
-      almostNever: 'Почти никогда',
-      yourTeam: 'Ваша команда — 4 уже выбранных героя',
-      enemyTeam: 'Команда врага — 4 известных героя',
-      expectedPick: 'Ожидаемый',
-      expectedPlaceholder: 'Ожидаемый последний пик врага (необязательно)',
-      matchSettings: 'Настройки матча',
-      skillBracket: 'Ранг',
-      apiKeyLabel: 'Ключ хранится только в вашем браузере',
-      analyzeBtn: '⚔  Спросить Оракула  ⚔',
-      analyzing: 'АНАЛИЗ ДРАФТА',
-      oracle: 'Оракул',
-      recommendation: 'Рекомендация последнего пика',
-      footerText: 'Анализ на основе DotaBuff · Liquipedia · ProTracker',
-      lastPickSlot: 'Слот последнего пика',
-      carry: 'Керри', mid: 'Мид',
-      posNames: ['Керри', 'Мид', 'Оффлейн', 'Саппорт', 'Хард Сапп'],
-      placeholders: ['напр. Juggernaut', 'напр. Lina', 'напр. Axe', 'напр. Earth Spirit', 'напр. Crystal Maiden'],
-      enemyPlaceholders: ['напр. Phantom Assassin', 'напр. Invoker', 'напр. Tidehunter', 'напр. Lion'],
-      enemyHero: 'Герой врага',
-      errApiKey: '⚠ Введите ваш API ключ Anthropic.',
-      errAllies: '⚠ Введите минимум 2 героя вашей команды (кроме слота последнего пика).',
-      errEnemies: '⚠ Введите минимум 2 героя противника.',
-      loadingSteps: ['Ищем данные патча 7.41c...', 'Проверяем винрейты DotaBuff...', 'Анализируем текущую мету...', 'Оцениваем синергии и контрпики...', 'Консультируемся с Оракулом...'],
-      bestPick: '🥇 Лучший пик', alt: '🥈 Альтернатива', safe: '🥉 Безопасный вариант',
-      keyThreat: '⚠ Главная угроза',
-      brackets: ['Титан / Про', 'Божество', 'Властелин', 'Легенда', 'Герой', 'Рыцарь', 'Страж', 'Рекрут'],
-    }
-  };
-
-  let currentLang = 'en';
-
-  function setLang(lang) {
-    currentLang = lang;
-    const t = TRANSLATIONS[lang];
-
-    // Update buttons
-    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
-    document.getElementById('btn-ru').classList.toggle('active', lang === 'ru');
-
-    // Update all data-i18n elements
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.dataset.i18n;
-      if (t[key] !== undefined) el.innerHTML = t[key];
-    });
-
-    // Update position labels in rows
-    posLabels.splice(0, posLabels.length, ...t.posNames);
-    posPlaceholders.splice(0, posPlaceholders.length, ...t.placeholders);
-
-    // Update pos-name labels in ally rows
-    for (let i = 1; i <= 5; i++) {
-      const row = document.getElementById('ally-row-' + i);
-      if (row) {
-        const nameEl = row.querySelector('.pos-name');
-        if (nameEl) nameEl.textContent = t.posNames[i - 1];
-        const inp = row.querySelector('.pos-input');
-        if (inp) inp.placeholder = t.placeholders[i - 1];
-        const slot = row.querySelector('.lastpick-slot span[data-i18n]');
-        if (slot) slot.innerHTML = t.lastPickSlot;
-      }
-    }
-
-    // Update enemy placeholders
-    for (let i = 1; i <= 4; i++) {
-      const inp = document.getElementById('enemy-' + i);
-      if (inp) inp.placeholder = t.enemyPlaceholders[i - 1];
-    }
-
-    // Update enemy hero labels
-    document.querySelectorAll('[data-i18n-enemy]').forEach(el => {
-      const key = el.dataset.i18nEnemy;
-      if (t[key]) el.textContent = t[key];
-    });
-
-    // Update expected last pick placeholder
-    const enemy5inp = document.getElementById('enemy-5');
-    if (enemy5inp) enemy5inp.placeholder = t.expectedPlaceholder;
-    const enemy5label = document.querySelector('#enemy-row-5 .pos-name');
-    if (enemy5label) enemy5label.textContent = t.expectedPick;
-
-    // Update bracket options
-    const bracketSelect = document.getElementById('bracket');
-    const currentIdx = bracketSelect.selectedIndex;
-    bracketSelect.innerHTML = t.brackets.map(b => `<option>${b}</option>`).join('');
-    bracketSelect.selectedIndex = currentIdx;
-
-    // Update lp-btn freq/role labels
-    const freqKeys = ['mostCommon', 'veryCommon', 'rare', 'veryRare', 'almostNever'];
-    const roleKeys = ['carry', 'mid', 'offLane', 'support', 'hardSupp'];
-    document.querySelectorAll('.lp-btn').forEach((btn, idx) => {
-      const freq = btn.querySelector('[data-i18n]');
-      const role = btn.querySelector('.lp-role[data-i18n]');
-      if (freq) freq.innerHTML = t[freqKeys[idx]] || freq.innerHTML;
-      if (role) role.innerHTML = t[roleKeys[idx]] || role.innerHTML;
-    });
-
-    // Update loading steps
-    loadingSteps.splice(0, loadingSteps.length, ...t.loadingSteps);
-  }
-
-  let loadingInterval;
-  function startLoading() {
-    let i = 0;
-    const el = document.getElementById('loading-step');
-    el.textContent = loadingSteps[0];
-    loadingInterval = setInterval(() => { i = (i+1) % loadingSteps.length; el.textContent = loadingSteps[i]; }, 2000);
-  }
-  function stopLoading() { clearInterval(loadingInterval); }
-
-  function getField(id) {
-    const el = document.getElementById(id);
-    return el ? el.value.trim() : '';
-  }
-
-  function buildPrompt(allies, enemies, lastPos, bracket, metaSummary, expectedEnemy5) {
-    const posName = posLabels[lastPos - 1];
-    const allyLines = allies.map((h, i) => {
-      const pNum = i + 1;
-      if (pNum === lastPos) return `  - Pos ${pNum} ${posLabels[i]}: [LAST PICK — to be determined]`;
-      return h ? `  - Pos ${pNum} ${posLabels[i]}: ${h}` : null;
-    }).filter(Boolean).join('\n');
-
-    const enemy5line = expectedEnemy5
-      ? `  - Enemy Hero 5 (Expected Last Pick): ${expectedEnemy5}`
-      : `  - Enemy Hero 5 (Last Pick): [UNKNOWN — enemy is also last picking]`;
-    const enemyLines = [
-      ...enemies.map((h, i) => h ? `  - Enemy Hero ${i+1}: ${h}` : null).filter(Boolean),
-      enemy5line
-    ].join('\n');
-
-    return `You are a Dota 2 draft expert. Give a concise last pick recommendation.
-
-DRAFT:
-My team (4 already picked, 1 slot open):
-${allyLines}
-
-Enemy team — 4 known heroes (positions unknown, their 5th is also a last pick):
-${enemyLines}
-
-The LAST PICK is for: Position ${lastPos} (${posName})
-${expectedEnemy5 ? `IMPORTANT: The enemy is expected to last pick ${expectedEnemy5}. Factor this into your recommendation — pick a hero that handles both their current 4 AND their expected last pick.` : `IMPORTANT: Both teams are last picking simultaneously. The enemy last pick is unknown — recommend heroes that are strong regardless or hard to counter-pick.`}
-Skill bracket: ${bracket}
-
-Current patch: 7.41c (May 2026)
-${metaSummary ? `Live meta data from web search:\n${metaSummary}\n` : ''}
-Respond in this EXACT JSON format only, no extra text, no markdown, no code blocks:
-{
-  "pick1": {
-    "hero": "Hero Name",
-    "tags": ["synergy with X", "counters Y", "meta pick"],
-    "reason": "2-3 sentences on why this hero wins — focus on synergies with allies and what it brings to the draft."
+// ── Translations ──────────────────────────────────────────────────────────────
+const T = {
+  en: {
+    tabs: ['⚔️ Draft','📊 Tiers','🛒 Build','🔄 Counter','📚 Guide','📋 Patch'],
+    tabIds: ['draft','tiers','build','counter','guide','patch'],
+    whoLastPick: 'Who Is Last Picking?',
+    yourTeam: 'Your Team — 4 Picked Heroes',
+    enemyTeam: 'Enemy Team — 4 Known Heroes',
+    expected: 'Expected',
+    matchSettings: 'Match Settings',
+    skillBracket: 'Skill Bracket',
+    apiNote: 'Your key stays in your browser only',
+    analyzeBtn: '⚔ Consult the Oracle ⚔',
+    analyzing: 'ANALYZING DRAFT',
+    oracle: 'Oracle',
+    recommendation: 'Last Pick Recommendation',
+    tierlistTitle: 'Tier List Settings',
+    tierlistBtn: '📊 Get Tier List',
+    tierlistLoading: 'Fetching ProTracker & DotaBuff data...',
+    tierlistResult: 'Patch Tier List',
+    itemBuildTitle: 'Hero Item Build',
+    heroName: 'Hero Name',
+    buildBtn: '🛒 Get Item Build',
+    buildLoading: 'Building item guide...',
+    buildResult: 'Item Build',
+    counterTitle: 'Counter Pick Finder',
+    counterBtn: '🔄 Find Counters',
+    counterLoading: 'Analyzing counter picks...',
+    counterResult: 'Counter Picks',
+    guideTitle: 'Hero Guide',
+    guideBtn: '📚 Get Hero Guide',
+    guideLoading: 'Loading hero guide...',
+    guideResult: 'Hero Guide',
+    patchBtn: '📋 Get Patch Summary',
+    patchLoading: 'Fetching patch notes...',
+    patchResult: 'Patch Summary',
+    loading: 'LOADING...',
+    posNames: ['Carry','Mid','Off Lane','Support','Hard Supp'],
+    posFreq: ['Most common','Very common','Rare','Very rare','Almost never'],
+    brackets: ['Immortal / Pro','Divine','Ancient','Legend','Archon','Crusader','Guardian','Herald'],
+    lastPickSlot: 'Last Pick Slot',
+    enemyPlaceholders: ['e.g. Phantom Assassin','e.g. Invoker','e.g. Tidehunter','e.g. Lion'],
+    expectedPh: 'Expected last pick (optional)',
+    bestPick: '🥇 Best Pick', alt: '🥈 Alternative', safe: '🥉 Safe Option',
+    keyThreat: '⚠ Key Threat',
+    errKey: '⚠ Please enter your Anthropic API key.',
+    errAllies: '⚠ Please enter at least 2 ally heroes.',
+    errEnemies: '⚠ Please enter at least 2 enemy heroes.',
+    errHero: '⚠ Please enter a hero name.',
+    hardCounters: 'Hard Counters', softCounters: 'Soft Counters',
+    avoid: 'Avoid', tip: 'Tip',
+    strengths: 'Strengths', weaknesses: 'Weaknesses', playstyle: 'Playstyle', role: 'Role',
+    starting: 'Starting', early: 'Early Game', core: 'Core Items', luxury: 'Luxury',
+    buffed: 'Buffed 📈', nerfed: 'Nerfed 📉', itemChanges: 'Item Changes', metaShift: 'Meta Shift',
+    draftSteps: ['Searching patch data...','Checking meta strength...','Evaluating synergies...','Analyzing counter picks...','Consulting the Oracle...'],
   },
-  "pick2": {
-    "hero": "Hero Name",
-    "tags": ["synergy with X", "counters Y"],
-    "reason": "2-3 sentences."
-  },
-  "pick3": {
-    "hero": "Hero Name",
-    "tags": ["safe pick", "counters Y"],
-    "reason": "2-3 sentences."
-  },
-  "threat": "One sentence on the single biggest danger from the enemy lineup."
-}`;
+  ru: {
+    tabs: ['⚔️ Драфт','📊 Тиры','🛒 Сборка','🔄 Контр','📚 Гайд','📋 Патч'],
+    tabIds: ['draft','tiers','build','counter','guide','patch'],
+    whoLastPick: 'Кто пикует последним?',
+    yourTeam: 'Ваша команда — 4 пика',
+    enemyTeam: 'Враги — 4 известных героя',
+    expected: 'Ожидаемый',
+    matchSettings: 'Настройки матча',
+    skillBracket: 'Ранг',
+    apiNote: 'Ключ хранится только в вашем браузере',
+    analyzeBtn: '⚔ Спросить Оракула ⚔',
+    analyzing: 'АНАЛИЗ ДРАФТА',
+    oracle: 'Оракул',
+    recommendation: 'Рекомендация последнего пика',
+    tierlistTitle: 'Настройки тир-листа',
+    tierlistBtn: '📊 Получить тир-лист',
+    tierlistLoading: 'Загружаем данные ProTracker и DotaBuff...',
+    tierlistResult: 'Тир-лист патча',
+    itemBuildTitle: 'Сборка предметов',
+    heroName: 'Имя героя',
+    buildBtn: '🛒 Получить сборку',
+    buildLoading: 'Составляем сборку...',
+    buildResult: 'Сборка предметов',
+    counterTitle: 'Поиск контрпиков',
+    counterBtn: '🔄 Найти контрпики',
+    counterLoading: 'Анализируем контрпики...',
+    counterResult: 'Контрпики',
+    guideTitle: 'Гайд по герою',
+    guideBtn: '📚 Получить гайд',
+    guideLoading: 'Загружаем гайд...',
+    guideResult: 'Гайд по герою',
+    patchBtn: '📋 Обзор патча',
+    patchLoading: 'Загружаем патч-ноты...',
+    patchResult: 'Обзор патча',
+    loading: 'ЗАГРУЗКА...',
+    posNames: ['Керри','Мид','Оффлейн','Саппорт','Хард Сапп'],
+    posFreq: ['Очень часто','Часто','Редко','Очень редко','Почти никогда'],
+    brackets: ['Титан / Про','Божество','Властелин','Легенда','Герой','Рыцарь','Страж','Рекрут'],
+    lastPickSlot: 'Слот последнего пика',
+    enemyPlaceholders: ['напр. Phantom Assassin','напр. Invoker','напр. Tidehunter','напр. Lion'],
+    expectedPh: 'Ожидаемый последний пик (необязательно)',
+    bestPick: '🥇 Лучший пик', alt: '🥈 Альтернатива', safe: '🥉 Безопасный',
+    keyThreat: '⚠ Главная угроза',
+    errKey: '⚠ Введите ваш API ключ Anthropic.',
+    errAllies: '⚠ Введите минимум 2 героя вашей команды.',
+    errEnemies: '⚠ Введите минимум 2 героя врага.',
+    errHero: '⚠ Введите имя героя.',
+    hardCounters: 'Жёсткие контрпики', softCounters: 'Мягкие контрпики',
+    avoid: 'Избегайте', tip: 'Совет',
+    strengths: 'Сильные стороны', weaknesses: 'Слабые стороны', playstyle: 'Стиль игры', role: 'Роль',
+    starting: 'Старт', early: 'Ранняя игра', core: 'Кор предметы', luxury: 'Ситуативно',
+    buffed: 'Улучшены 📈', nerfed: 'Ослаблены 📉', itemChanges: 'Изменения предметов', metaShift: 'Сдвиг меты',
+    draftSteps: ['Ищем данные патча...','Проверяем мету...','Оцениваем синергии...','Анализируем контрпики...','Консультируемся с Оракулом...'],
+  }
+};
+
+let lang = 'en';
+let lastPos = 1;
+let loadingInterval;
+
+function t(key) { return T[lang][key] || T['en'][key] || key; }
+
+// ── Lang ─────────────────────────────────────────────────────────────────────
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.getElementById('btn-ru').classList.toggle('active', l === 'ru');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (T[lang][key]) el.innerHTML = T[lang][key];
+  });
+  buildTabs();
+  buildPosBtns();
+  buildAllyRows();
+  buildEnemyRows();
+  buildBrackets();
+  updateAcPlaceholders();
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+let activeTab = 'draft';
+function buildTabs() {
+  const nav = document.getElementById('tab-nav');
+  nav.innerHTML = '';
+  t('tabs').forEach((label, i) => {
+    const id = T[lang].tabIds[i];
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (id === activeTab ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => switchTab(id);
+    nav.appendChild(btn);
+  });
+}
+
+function switchTab(id) {
+  activeTab = id;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', T[lang].tabIds[i] === id);
+  });
+}
+
+// ── Position buttons ──────────────────────────────────────────────────────────
+function buildPosBtns() {
+  const wrap = document.getElementById('pos-btns');
+  wrap.innerHTML = '';
+  t('posNames').forEach((name, i) => {
+    const pos = i + 1;
+    const btn = document.createElement('button');
+    btn.className = 'pos-btn' + (pos === lastPos ? ' selected' : '');
+    btn.innerHTML = `<span class="pn">Pos ${pos}</span><span class="pr">${name}</span><span class="pf">${t('posFreq')[i]}</span>`;
+    btn.onclick = () => { lastPos = pos; buildPosBtns(); buildAllyRows(); };
+    wrap.appendChild(btn);
+  });
+}
+
+// ── Ally rows ─────────────────────────────────────────────────────────────────
+function buildAllyRows() {
+  const wrap = document.getElementById('ally-rows');
+  wrap.innerHTML = '';
+  const posNames = t('posNames');
+  for (let i = 1; i <= 5; i++) {
+    const row = document.createElement('div');
+    row.className = 'pos-row';
+    row.style.marginBottom = i < 5 ? '8px' : '0';
+    const isLP = i === lastPos;
+    row.innerHTML = `
+      <div class="pos-label">
+        <div class="pos-num blue" style="${isLP ? 'background:rgba(200,16,46,0.2);color:var(--accent-bright);border-color:rgba(200,16,46,0.5)' : ''}">${i}</div>
+        <div class="pos-name" style="${isLP ? 'color:var(--accent-bright)' : ''}">${posNames[i-1]}</div>
+      </div>
+      ${isLP
+        ? `<div class="lp-slot"><div class="lp-pulse"></div><span>${t('lastPickSlot')}</span></div>`
+        : `<div class="ac-wrap"><input class="pos-input blue-focus" id="ally-${i}" type="text" placeholder="e.g. Axe" autocomplete="off"><div class="ac-dropdown" id="ally-${i}-ac"></div></div>`
+      }`;
+    wrap.appendChild(row);
+  }
+  // Attach autocompletes to new inputs
+  for (let i = 1; i <= 5; i++) {
+    if (i !== lastPos) setupAC(document.getElementById(`ally-${i}`), document.getElementById(`ally-${i}-ac`));
+  }
+}
+
+// ── Enemy rows ────────────────────────────────────────────────────────────────
+function buildEnemyRows() {
+  const wrap = document.getElementById('enemy-rows');
+  wrap.innerHTML = '';
+  const phs = t('enemyPlaceholders');
+  for (let i = 1; i <= 4; i++) {
+    const row = document.createElement('div');
+    row.className = 'pos-row';
+    row.style.marginBottom = '8px';
+    row.innerHTML = `
+      <div class="pos-label">
+        <div class="pos-num">${i}</div>
+        <div class="pos-name" data-en="Enemy Hero" data-ru="Герой врага">${lang === 'ru' ? 'Герой врага' : 'Enemy Hero'}</div>
+      </div>
+      <div class="ac-wrap"><input class="pos-input" id="enemy-${i}" type="text" placeholder="${phs[i-1]}" autocomplete="off"><div class="ac-dropdown" id="enemy-${i}-ac"></div></div>`;
+    wrap.appendChild(row);
+    setTimeout(() => setupAC(document.getElementById(`enemy-${i}`), document.getElementById(`enemy-${i}-ac`)), 0);
+  }
+  document.getElementById('enemy-exp').placeholder = t('expectedPh');
+}
+
+// ── Brackets ──────────────────────────────────────────────────────────────────
+function buildBrackets() {
+  ['bracket','tier-bracket'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const cur = sel.selectedIndex;
+    sel.innerHTML = t('brackets').map(b => `<option>${b}</option>`).join('');
+    sel.selectedIndex = cur;
+  });
+}
+
+// ── Autocomplete ──────────────────────────────────────────────────────────────
+function highlightMatch(name, query) {
+  const idx = name.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return name;
+  return name.slice(0,idx) + '<mark>' + name.slice(idx, idx+query.length) + '</mark>' + name.slice(idx+query.length);
+}
+
+function setupAC(input, dropdown) {
+  if (!input || !dropdown) return;
+  let activeIdx = -1, matches = [];
+
+  function show(q) {
+    if (!q) { dropdown.classList.remove('open'); return; }
+    matches = HEROES.filter(h => h.toLowerCase().includes(q.toLowerCase())).slice(0,8);
+    if (!matches.length) { dropdown.classList.remove('open'); return; }
+    activeIdx = -1;
+    dropdown.innerHTML = matches.map((h,i) =>
+      `<div class="ac-item" data-i="${i}"><span class="ac-initial">${h[0]}</span>${highlightMatch(h,q)}</div>`
+    ).join('');
+    dropdown.querySelectorAll('.ac-item').forEach(item => {
+      item.onmousedown = e => { e.preventDefault(); input.value = matches[+item.dataset.i]; dropdown.classList.remove('open'); };
+    });
+    dropdown.classList.add('open');
   }
 
-  function tagClass(tag) {
-    const t = tag.toLowerCase();
-    if (t.includes('s-tier') || t.includes('a-tier') || t.includes('b-tier') || t.includes('meta') || t.includes('patch')) return 'meta';
-    if (t.includes('synerg') || t.includes('with') || t.includes('combo') || t.includes('safe')) return 'synergy';
-    if (t.includes('counter') || t.includes('beats') || t.includes('against')) return 'counter';
-    return 'meta';
+  function setActive(idx) {
+    dropdown.querySelectorAll('.ac-item').forEach((el,i) => el.classList.toggle('active', i===idx));
+    if (idx >= 0) dropdown.querySelectorAll('.ac-item')[idx]?.scrollIntoView({block:'nearest'});
   }
 
-  function renderResult(data) {
-    let html = '';
+  input.addEventListener('input', () => show(input.value));
+  input.addEventListener('focus', () => { if (input.value) show(input.value); });
+  input.addEventListener('keydown', e => {
+    if (!dropdown.classList.contains('open')) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = Math.min(activeIdx+1, matches.length-1); setActive(activeIdx); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = Math.max(activeIdx-1, 0); setActive(activeIdx); }
+    else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (activeIdx >= 0) { e.preventDefault(); input.value = matches[activeIdx]; dropdown.classList.remove('open'); }
+      else if (matches.length === 1) { e.preventDefault(); input.value = matches[0]; dropdown.classList.remove('open'); }
+    }
+    else if (e.key === 'Escape') dropdown.classList.remove('open');
+  });
+  document.addEventListener('click', e => { if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.classList.remove('open'); });
+}
+
+function updateAcPlaceholders() {
+  const phs = t('enemyPlaceholders');
+  for (let i = 1; i <= 4; i++) {
+    const inp = document.getElementById(`enemy-${i}`);
+    if (inp) inp.placeholder = phs[i-1];
+  }
+  document.getElementById('enemy-exp').placeholder = t('expectedPh');
+}
+
+// ── API call — routes through your Railway server ─────────────────────────────
+async function callServer(endpoint, body) {
+  const resp = await fetch(`${API_URL}/${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error || `Server error ${resp.status}`);
+  }
+  return await resp.json();
+}
+
+function tagClass(tag) {
+  const t = tag.toLowerCase();
+  if (t.includes('tier') || t.includes('meta') || t.includes('patch')) return 'meta';
+  if (t.includes('synerg') || t.includes('with') || t.includes('combo') || t.includes('safe')) return 'synergy';
+  return 'counter';
+}
+
+function startLoading(loadingId, stepId, steps) {
+  document.getElementById(loadingId).className = 'loading active';
+  let i = 0;
+  if (stepId) {
+    const el = document.getElementById(stepId);
+    if (el && steps) { el.textContent = steps[0]; loadingInterval = setInterval(() => { i=(i+1)%steps.length; el.textContent=steps[i]; }, 2000); }
+  }
+}
+
+function stopLoading(loadingId) {
+  clearInterval(loadingInterval);
+  document.getElementById(loadingId).className = 'loading';
+}
+
+function showError(errorId, msg) {
+  const el = document.getElementById(errorId);
+  el.textContent = msg;
+  el.className = 'error active';
+}
+
+function getVal(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+// ── DRAFT ─────────────────────────────────────────────────────────────────────
+async function runDraft() {
+  const bracket = getVal('bracket');
+  document.getElementById('draft-error').className = 'error';
+  document.getElementById('draft-result').className = 'panel result';
+
+  const allies = {};
+  for (let i = 1; i <= 5; i++) {
+    if (i !== lastPos) { const v = getVal(`ally-${i}`); if (v) allies[i] = v; }
+  }
+  const enemies = {};
+  for (let i = 1; i <= 4; i++) { const v = getVal(`enemy-${i}`); if (v) enemies[i] = v; }
+  const exp5 = getVal('enemy-exp');
+
+  if (Object.keys(allies).length < 2) { showError('draft-error', t('errAllies')); return; }
+  if (Object.keys(enemies).length < 2) { showError('draft-error', t('errEnemies')); return; }
+
+  document.getElementById('draft-btn').disabled = true;
+  startLoading('draft-loading', 'draft-step', t('draftSteps'));
+
+  try {
+    const data = await callServer('draft', { allies, enemies, last_pos: lastPos, expected5: exp5, bracket });
+
+    stopLoading('draft-loading');
+    document.getElementById('draft-result').className = 'panel result active';
+
     const picks = [
-      { key: 'pick1', label: () => TRANSLATIONS[currentLang].bestPick, cls: 'top-pick' },
-      { key: 'pick2', label: () => TRANSLATIONS[currentLang].alt, cls: 'alt-pick' },
-      { key: 'pick3', label: () => TRANSLATIONS[currentLang].safe, cls: 'alt-pick' },
+      {key:'pick1', label:t('bestPick'), cls:'top'},
+      {key:'pick2', label:t('alt'), cls:'alt'},
+      {key:'pick3', label:t('safe'), cls:'alt'},
     ];
-
-    for (const { key, label, cls } of picks) {
-      const p = data[key];
-      if (!p) continue;
-      const tags = (p.tags || []).map(t => `<span class="tag ${tagClass(t)}">${t}</span>`).join('');
-      const labelText = typeof label === 'function' ? label() : label;
-      html += `<div class="pick-card ${cls}">
-        <div class="pick-rank">${labelText}</div>
-        <div class="pick-hero">${p.hero}</div>
-        <div class="pick-tags">${tags}</div>
-        <div class="pick-reason">${p.reason}</div>
-      </div>`;
-    }
-
-    if (data.threat) {
-      html += `<div class="threat-note">
-        <div class="threat-note-title">${TRANSLATIONS[currentLang].keyThreat}</div>
-        <p>${data.threat}</p>
-      </div>`;
-    }
-
-    document.getElementById('result-content').innerHTML = html;
+    let html = '';
+    picks.forEach(({key,label,cls}) => {
+      const p = data[key]; if (!p) return;
+      const tags = (p.tags||[]).map(tg => `<span class="tag ${tagClass(tg)}">${tg}</span>`).join('');
+      html += `<div class="pick-card ${cls}"><div class="pick-rank">${label}</div><div class="pick-hero">${p.hero}</div><div class="pick-tags">${tags}</div><div class="pick-reason">${p.reason}</div></div>`;
+    });
+    if (data.threat) html += `<div class="threat-note"><div class="threat-title">${t('keyThreat')}</div><p>${data.threat}</p></div>`;
+    if (data.item_hint && data.pick1) html += `<div class="threat-note" style="margin-top:8px;border-color:rgba(93,173,226,0.2);background:rgba(93,173,226,0.04)"><div class="threat-title" style="color:var(--blue)">🛒 ${data.pick1.hero}</div><p>${data.item_hint}</p></div>`;
+    document.getElementById('draft-result-content').innerHTML = html;
+  } catch(e) {
+    stopLoading('draft-loading');
+    showError('draft-error', '⚠ ' + e.message);
   }
+  document.getElementById('draft-btn').disabled = false;
+}
 
-  function renderRaw(text) {
-    const formatted = text
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^#{1,3} (.+)$/gm, '<strong style="font-size:16px;color:var(--gold-bright);display:block;margin:12px 0 4px">$1</strong>')
-      .replace(/^- (.+)$/gm, '&nbsp;&nbsp;• $1')
-      .replace(/\n/g, '<br>');
-    document.getElementById('result-content').innerHTML = `<div class="result-raw">${formatted}</div>`;
+// ── TIER LIST ─────────────────────────────────────────────────────────────────
+async function runTierlist() {
+  const bracket = getVal('tier-bracket');
+  document.getElementById('tier-error').className = 'error';
+  document.getElementById('tier-result').className = 'panel result';
+
+  startLoading('tier-loading', null, null);
+  try {
+    const data = await callServer('tierlist', { bracket });
+
+    stopLoading('tier-loading');
+    document.getElementById('tier-result').className = 'panel result active';
+
+    const posMap = lang === 'ru'
+      ? {carry:'Керри',mid:'Мид',offlane:'Оффлейн',support:'Саппорт',hard_support:'Хард Сапп'}
+      : {carry:'Carry',mid:'Mid',offlane:'Offlane',support:'Support',hard_support:'Hard Support'};
+
+    let html = '';
+    Object.entries(posMap).forEach(([key, label]) => {
+      const pos = data[key] || {};
+      html += `<div class="tier-pos"><div class="tier-pos-name">${label}</div>`;
+      if (pos.S?.length) html += `<div class="tier-row"><span class="tier-label s">S</span><div class="tier-heroes">${pos.S.map(h=>`<span class="hero-chip">${h}</span>`).join('')}</div></div>`;
+      if (pos.A?.length) html += `<div class="tier-row"><span class="tier-label a">A</span><div class="tier-heroes">${pos.A.map(h=>`<span class="hero-chip">${h}</span>`).join('')}</div></div>`;
+      html += '</div>';
+    });
+    document.getElementById('tier-result-content').innerHTML = html;
+  } catch(e) {
+    stopLoading('tier-loading');
+    showError('tier-error', '⚠ ' + e.message);
   }
+}
 
-  async function analyze() {
-    const allies = [1,2,3,4,5].map(i => getField(`ally-${i}`));
-    const enemies = [1,2,3,4].map(i => getField(`enemy-${i}`));
-    const expectedEnemy5 = getField('enemy-5');
-    const apiKey = getField('api-key');
-    const bracket = document.getElementById('bracket').value;
+// ── ITEM BUILD ────────────────────────────────────────────────────────────────
+async function runBuild() {
+  const hero = getVal('build-hero');
+  document.getElementById('build-error').className = 'error';
+  document.getElementById('build-result').className = 'panel result';
+  if (!hero) { showError('build-error', t('errHero')); return; }
 
-    const errorBox = document.getElementById('error-box');
-    errorBox.className = 'error';
+  startLoading('build-loading', null, null);
+  try {
+    const data = await callServer('itembuild', { hero });
 
-    if (!apiKey) { errorBox.textContent = TRANSLATIONS[currentLang].errApiKey; errorBox.className = 'error active'; return; }
+    stopLoading('build-loading');
+    document.getElementById('build-result').className = 'panel result active';
 
-    // Count filled ally slots (excluding last pick slot)
-    const filledAllies = allies.filter((h, i) => (i + 1) !== currentLastPick && h).length;
-    const filledEnemies = enemies.filter(Boolean).length;
+    const lbl = lang === 'ru'
+      ? {starting:'Старт',early:'Ранняя игра',core:'Кор предметы',luxury:'Ситуативно'}
+      : {starting:t('starting'),early:t('early'),core:t('core'),luxury:t('luxury')};
 
-    if (filledAllies < 2) { errorBox.textContent = TRANSLATIONS[currentLang].errAllies; errorBox.className = 'error active'; return; }
-    if (filledEnemies < 2) { errorBox.textContent = TRANSLATIONS[currentLang].errEnemies; errorBox.className = 'error active'; return; }
-
-    document.getElementById('analyze-btn').disabled = true;
-    document.getElementById('loading').className = 'loading active';
-    document.getElementById('result-panel').className = 'panel result';
-    startLoading();
-
-    try {
-      // ── STEP 1: Sonnet with web search fetches current patch meta ──
-      const heroList = [...allies.filter((h,i) => (i+1) !== currentLastPick && h), ...enemies.filter(Boolean), ...(expectedEnemy5 ? [expectedEnemy5] : [])];
-      const searchPrompt = `Search DotaBuff and patch notes for Dota 2 patch 7.41c (May 2026). 
-Find current win rates, meta strength, and any recent buffs/nerfs for these heroes: ${heroList.join(', ')}.
-Also find what Position ${currentLastPick} heroes are strong in the current 7.41c meta.
-Summarize the key findings in 200 words max. Focus only on gameplay-relevant data.`;
-
-      const searchResp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 400,
-          system: "You are a Dota 2 meta expert with knowledge up to patch 7.41c. Summarize current meta strength and recent changes for the given heroes in under 150 words.",
-          messages: [{ role: "user", content: searchPrompt }]
-        })
+    let html = `<div style="font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--silver-bright);margin-bottom:12px">${data.hero || hero}</div>`;
+    Object.entries(lbl).forEach(([key,label]) => {
+      const items = data[key] || [];
+      if (!items.length) return;
+      html += `<div class="item-section"><div class="item-section-title">${label}</div><div class="item-list">`;
+      items.forEach((item, i) => {
+        html += `<span class="item-chip">${item}</span>`;
+        if (i < items.length-1) html += `<span class="item-arrow">›</span>`;
       });
-
-      if (!searchResp.ok) {
-        const err = await searchResp.json().catch(() => ({}));
-        throw new Error(err.error?.message || `API error ${searchResp.status}`);
-      }
-
-      const searchData = await searchResp.json();
-      if (!searchData.content || !Array.isArray(searchData.content)) throw new Error("Unexpected API response.");
-
-      // Extract all text from search response (skip tool_use blocks)
-      const metaSummary = searchData.content
-        .filter(b => b.type === 'text')
-        .map(b => b.text)
-        .join('\n')
-        .trim() || 'No additional patch data found.';
-
-      // ── STEP 2: Haiku uses the search data to produce fast JSON analysis ──
-      const analysisResp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 700,
-          system: "You are an expert Dota 2 draft analyst. Always respond with valid JSON only — no markdown, no code blocks, no extra text before or after the JSON. Be concise.",
-          messages: [{ role: "user", content: buildPrompt(allies, enemies, currentLastPick, bracket, metaSummary, expectedEnemy5) }]
-        })
-      });
-
-      if (!analysisResp.ok) {
-        const err = await analysisResp.json().catch(() => ({}));
-        throw new Error(err.error?.message || `API error ${analysisResp.status}`);
-      }
-
-      const analysisData = await analysisResp.json();
-      if (!analysisData.content || !Array.isArray(analysisData.content)) throw new Error("Unexpected API response.");
-
-      const textBlocks = analysisData.content.filter(b => b.type === 'text');
-      if (!textBlocks.length) throw new Error("No response received. Please try again.");
-
-      const rawText = textBlocks.map(b => b.text).join('');
-
-      stopLoading();
-      document.getElementById('loading').className = 'loading';
-      document.getElementById('result-panel').className = 'panel result active';
-
-      try {
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error('no json');
-        renderResult(JSON.parse(jsonMatch[0]));
-      } catch {
-        renderRaw(rawText);
-      }
-
-    } catch (err) {
-      stopLoading();
-      document.getElementById('loading').className = 'loading';
-      errorBox.textContent = '⚠ ' + err.message;
-      errorBox.className = 'error active';
-    }
-
-    document.getElementById('analyze-btn').disabled = false;
+      html += '</div></div>';
+    });
+    if (data.tip) html += `<div class="threat-note" style="margin-top:8px"><div class="threat-title">💡 Tip</div><p>${data.tip}</p></div>`;
+    document.getElementById('build-result-content').innerHTML = html;
+  } catch(e) {
+    stopLoading('build-loading');
+    showError('build-error', '⚠ ' + e.message);
   }
+}
+
+// ── COUNTER ───────────────────────────────────────────────────────────────────
+async function runCounter() {
+  const hero = getVal('counter-hero');
+  document.getElementById('counter-error').className = 'error';
+  document.getElementById('counter-result').className = 'panel result';
+  if (!hero) { showError('counter-error', t('errHero')); return; }
+
+  startLoading('counter-loading', null, null);
+  try {
+    const data = await callServer('counter', { hero });
+
+    stopLoading('counter-loading');
+    document.getElementById('counter-result').className = 'panel result active';
+
+    let html = `<div style="font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--silver-bright);margin-bottom:12px">${data.hero || hero}</div>`;
+    html += `<div class="counter-section"><div class="counter-title hard">${t('hardCounters')} 🔴</div>`;
+    (data.hard||[]).forEach(c => { html += `<div class="counter-item"><div class="counter-hero">${c.name}</div><div class="counter-reason">${c.reason}</div></div>`; });
+    html += `</div><div class="counter-section"><div class="counter-title soft">${t('softCounters')} 🟡</div>`;
+    (data.soft||[]).forEach(c => { html += `<div class="counter-item"><div class="counter-hero">${c.name}</div><div class="counter-reason">${c.reason}</div></div>`; });
+    html += '</div>';
+    if (data.avoid?.length) html += `<div class="threat-note"><div class="threat-title">${t('avoid')} ❌</div><p>${data.avoid.join(', ')}</p></div>`;
+    if (data.tip) html += `<div class="threat-note" style="margin-top:8px"><div class="threat-title">💡 ${t('tip')}</div><p>${data.tip}</p></div>`;
+    document.getElementById('counter-result-content').innerHTML = html;
+  } catch(e) {
+    stopLoading('counter-loading');
+    showError('counter-error', '⚠ ' + e.message);
+  }
+}
+
+// ── GUIDE ─────────────────────────────────────────────────────────────────────
+async function runGuide() {
+  const hero = getVal('guide-hero');
+  document.getElementById('guide-error').className = 'error';
+  document.getElementById('guide-result').className = 'panel result';
+  if (!hero) { showError('guide-error', t('errHero')); return; }
+
+  startLoading('guide-loading', null, null);
+  try {
+    const data = await callServer('guide', { hero });
+
+    stopLoading('guide-loading');
+    document.getElementById('guide-result').className = 'panel result active';
+
+    let html = `<div style="font-family:'Cinzel Decorative',serif;font-size:14px;color:var(--silver-bright);margin-bottom:12px">${data.hero || hero}</div>`;
+    html += `<div class="guide-role">${t('role')}: <span>${data.role||''}</span></div>`;
+    html += `<div class="guide-section"><div class="guide-section-title">${t('playstyle')}</div><div class="guide-text">${data.playstyle||''}</div></div>`;
+    html += `<div class="guide-section"><div class="guide-section-title">${t('strengths')}</div><ul class="guide-list">${(data.strengths||[]).map(s=>`<li>${s}</li>`).join('')}</ul></div>`;
+    html += `<div class="guide-section"><div class="guide-section-title">${t('weaknesses')}</div><ul class="guide-list">${(data.weaknesses||[]).map(w=>`<li class="neg">${w}</li>`).join('')}</ul></div>`;
+    if (data.tip) html += `<div class="threat-note"><div class="threat-title">💡 ${t('tip')}</div><p>${data.tip}</p></div>`;
+    document.getElementById('guide-result-content').innerHTML = html;
+  } catch(e) {
+    stopLoading('guide-loading');
+    showError('guide-error', '⚠ ' + e.message);
+  }
+}
+
+// ── PATCH ─────────────────────────────────────────────────────────────────────
+async function runPatch() {
+  document.getElementById('patch-error').className = 'error';
+  document.getElementById('patch-result').className = 'panel result';
+
+  startLoading('patch-loading', null, null);
+  try {
+    const data = await callServer('patch', {});
+
+    stopLoading('patch-loading');
+    document.getElementById('patch-result').className = 'panel result active';
+
+    let html = `<div style="font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--silver-bright);margin-bottom:8px">Patch ${data.patch||PATCH}</div>`;
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:14px;font-style:italic">${data.headline||''}</div>`;
+    html += `<div class="guide-section"><div class="guide-section-title">${t('buffed')}</div><div class="tier-heroes">${(data.buffed||[]).map(h=>`<span class="hero-chip">${h}</span>`).join('')}</div></div>`;
+    html += `<div class="guide-section" style="margin-top:10px"><div class="guide-section-title">${t('nerfed')}</div><div class="tier-heroes">${(data.nerfed||[]).map(h=>`<span class="hero-chip">${h}</span>`).join('')}</div></div>`;
+    html += `<div class="threat-note" style="margin-top:10px"><div class="threat-title">${t('itemChanges')}</div><p>${data.item_changes||''}</p></div>`;
+    html += `<div class="threat-note" style="margin-top:8px"><div class="threat-title">${t('metaShift')}</div><p>${data.meta_shift||''}</p></div>`;
+    document.getElementById('patch-result-content').innerHTML = html;
+  } catch(e) {
+    stopLoading('patch-loading');
+    showError('patch-error', '⚠ ' + e.message);
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+buildTabs();
+buildPosBtns();
+buildAllyRows();
+buildEnemyRows();
+buildBrackets();
+setupAC(document.getElementById('build-hero'), document.getElementById('build-hero-ac'));
+setupAC(document.getElementById('counter-hero'), document.getElementById('counter-hero-ac'));
+setupAC(document.getElementById('guide-hero'), document.getElementById('guide-hero-ac'));
+setupAC(document.getElementById('enemy-exp'), null);
+
+
 </script>
 </body>
 </html>
